@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: DraftCode NBA draft prediction agent API.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures:
+      - arm64
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        PYTHONPATH: /var/task/src
+        DRAFTCODE_DATA_DIR: /var/task/data/sample
+
+Resources:
+  PredictionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ..
+      Handler: draftcode.lambda_handler.handler
+      Description: Generates auditable NBA draft predictions.
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        PredictionApi:
+          Type: Api
+          Properties:
+            Path: /predictions
+            Method: GET
+
+Outputs:
+  PredictionApiUrl:
+    Description: API Gateway endpoint for prediction runs.
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/predictions"

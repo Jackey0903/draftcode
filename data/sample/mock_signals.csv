@@ -1,0 +1,11 @@
+abbreviation,prospect_id,signal_strength,source
+ATL,p001,0.82,synthetic-consensus
+WAS,p002,0.78,synthetic-consensus
+CHA,p003,0.76,synthetic-consensus
+POR,p004,0.7,synthetic-consensus
+SAS,p005,0.68,synthetic-consensus
+DET,p007,0.66,synthetic-consensus
+UTA,p006,0.64,synthetic-consensus
+BKN,p008,0.63,synthetic-consensus
+TOR,p009,0.6,synthetic-consensus
+MEM,p010,0.58,synthetic-consensus

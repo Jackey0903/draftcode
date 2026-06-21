@@ -1,0 +1,13 @@
+prospect_id,name,primary_position,archetype,consensus_rank,age,height_in,wingspan_in,usage_rate,true_shooting_pct,assist_rate,rebound_rate,stock_rate,notes
+p001,Sample Wing Alpha,W,two-way creator,1,19.2,80,84,29.1,0.59,18.2,12.4,4.4,synthetic smoke-test row
+p002,Sample Big Bravo,B,rim protecting finisher,2,19.7,84,90,23.4,0.64,8.5,20.2,5.8,synthetic smoke-test row
+p003,Sample Guard Charlie,G,primary initiator,3,20.1,75,78,31.5,0.57,34.0,7.4,2.8,synthetic smoke-test row
+p004,Sample Wing Delta,W,3-and-D wing,4,19.5,79,83,20.2,0.61,11.2,10.6,3.2,synthetic smoke-test row
+p005,Sample Guard Echo,G,combo guard scorer,5,18.9,76,79,28.4,0.58,24.5,6.8,2.2,synthetic smoke-test row
+p006,Sample Big Foxtrot,B,stretch big,6,20.4,83,87,22.1,0.6,13.1,17.5,3.6,synthetic smoke-test row
+p007,Sample Wing Golf,W,transition slasher,7,19.8,81,85,24.8,0.56,10.8,13.9,3.9,synthetic smoke-test row
+p008,Sample Guard Hotel,G,table-setting guard,8,21.0,74,77,21.6,0.55,38.5,5.1,2.5,synthetic smoke-test row
+p009,Sample Big India,B,physical rebounder,9,19.9,82,88,18.7,0.62,6.9,22.0,4.6,synthetic smoke-test row
+p010,Sample Wing Juliet,W,movement shooter,10,20.2,78,81,19.4,0.63,9.5,8.2,2.4,synthetic smoke-test row
+p011,Sample Guard Kilo,G,pace guard,11,19.3,73,76,25.0,0.54,29.6,5.8,2.7,synthetic smoke-test row
+p012,Sample Big Lima,B,defensive anchor,12,21.2,85,91,16.5,0.61,5.2,19.8,6.2,synthetic smoke-test row
