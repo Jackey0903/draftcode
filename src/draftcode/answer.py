@@ -32,12 +32,17 @@ def write_answer_card(
 
 
 def _write_pick_predictions(sheet: Worksheet, report: TwinReport) -> None:
-    header_row, columns = _find_columns(sheet, ["顺位", "预测球员"])
+    header_row, columns = _find_columns(sheet, ["顺位", "持签球队", "预测球员"])
     pick_column = columns["顺位"]
+    team_column = columns["持签球队"]
     answer_column = columns["预测球员"]
 
     for pick in report.assigned_picks:
         row = _find_pick_row(sheet, header_row, pick_column, pick.pick)
+        # Holding team comes from our draft order (official board + officially
+        # confirmed trades, e.g. the Giannis deal moving pick 13 to Milwaukee),
+        # overriding the template's pre-trade pre-fill.
+        sheet.cell(row=row, column=team_column).value = pick.team
         sheet.cell(row=row, column=answer_column).value = pick.prospect_name
 
 
