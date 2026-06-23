@@ -6,6 +6,8 @@ DraftCode is a serverless, auditable NBA draft intelligence pipeline: data lands
 
 The product innovation is the **Milestone-Aware Draft Twin**: a probabilistic simulation that predicts both the 30 pick sheet and the 7 milestone questions from the same evidence graph. See `docs/innovation_strategy.md`.
 
+The AWS tool innovation is three cloud-native patterns: **Evidence Ledger**, **Scenario Swarm**, and **Explanation Firewall**. See `docs/aws_tool_innovation.md`.
+
 ## Architecture diagram
 
 ```mermaid
@@ -49,6 +51,14 @@ flowchart LR
 | Safety boundary for AI text | Bedrock Guardrails | Keeps generated explanation bounded and reduces unsafe or irrelevant text risk. |
 | Observability | CloudWatch + X-Ray | Logs, traces, latency, and failure diagnosis. |
 | Repeatable deployment | AWS SAM | Infrastructure as code for the whole serverless stack. |
+
+## AWS tool innovation
+
+| Pattern | AWS tools | What is new about the usage |
+| --- | --- | --- |
+| Evidence Ledger | S3 + DynamoDB + CloudWatch/X-Ray | Every prediction has a versioned input snapshot, run record, output artifact, and traceable logs. |
+| Scenario Swarm | Step Functions + Distributed Map target + Lambda container | The draft becomes many parallel scenarios, not one brittle mock; serverless fanout replaces fixed workers. |
+| Explanation Firewall | Bedrock + Knowledge Bases target + Guardrails target | AI explains deterministic evidence; it does not silently create final picks. |
 
 ## Security posture
 

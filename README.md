@@ -46,6 +46,7 @@ Required manual logins:
 - `docs/architecture.md`: AWS serverless architecture and roadshow talk track.
 - `docs/aws_scorecard.md`: mapping from AWS scoring language to concrete implementation.
 - `docs/innovation_strategy.md`: Milestone-Aware Draft Twin concept and build priorities.
+- `docs/aws_tool_innovation.md`: AWS tool-level innovation patterns.
 
 ## Competition commands
 

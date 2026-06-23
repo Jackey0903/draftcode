@@ -12,6 +12,7 @@ Use this table when preparing the code-quality explanation and roadshow.
 | Observability | CloudWatch default logs plus X-Ray tracing on Lambda and state machine. | `infra/template.yaml` |
 | Cost control | Pay-per-use serverless, DynamoDB on-demand, S3 lifecycle, concurrency cap. | `infra/template.yaml` |
 | AI responsibility | Bedrock explains deterministic traces instead of inventing predictions. | `docs/architecture.md` |
+| AWS tool innovation | Evidence Ledger, Scenario Swarm, and Explanation Firewall turn AWS tools into a decision-control system. | `docs/aws_tool_innovation.md` |
 | Data science insight | Milestone-aware Draft Twin optimizes both pick accuracy and the 28-point milestone section. | `docs/innovation_strategy.md` |
 | Agent auditability | Every pick has component scores and top alternatives. | `outputs/trace.json`, `src/draftcode/model.py` |
 | Submission safety | Output validator blocks missing or duplicate picks. | `draftcode validate-output` |
@@ -19,3 +20,5 @@ Use this table when preparing the code-quality explanation and roadshow.
 ## Judge-facing claim
 
 DraftCode uses AWS where the cloud changes the system quality: orchestration, auditability, elasticity, security, and operational visibility. The local deterministic model remains portable, but the production path is serverless and replayable.
+
+The key phrase for judges: AWS is the control plane for uncertainty, not just the hosting layer.
