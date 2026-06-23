@@ -22,6 +22,19 @@ Parameters:
     Default: "10"
     AllowedPattern: "^[0-9]+$"
     Description: Default Scenario Swarm shard count.
+  EnableBedrockGuardrail:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >-
+      Provision a Bedrock Guardrail for LLM scouting output. Keep "false" on
+      accounts without Bedrock enablement (this account is region-blocked); flip
+      to "true" once the hackathon host account with Bedrock access is used.
+
+Conditions:
+  CreateBedrockGuardrail: !Equals [!Ref EnableBedrockGuardrail, "true"]
 
 Globals:
   Function:
@@ -40,9 +53,99 @@ Globals:
         DRAFTCODE_AWS_REGION: !Ref AWS::Region
         DRAFTCODE_S3_BUCKET: !Ref DraftDataBucket
         DRAFTCODE_DYNAMODB_TABLE: !Ref PredictionRunsTable
+        DRAFTCODE_KMS_KEY_ID: !Ref DraftCodeKey
+        # Bearer token for the external gpt-5.5 gateway is read from Secrets
+        # Manager at runtime (never baked into the image or env).
+        DRAFTCODE_LLM_SECRET_ARN: !Ref GatewayApiKeySecret
         DRAFTCODE_BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20240620-v1:0
 
 Resources:
+  # Customer-managed CMK: one auditable key for S3 objects, the DynamoDB run
+  # ledger, and the gpt-5.5 gateway secret. Rotation is on; access is delegated
+  # to IAM (root statement) plus the specific AWS services that encrypt at rest.
+  DraftCodeKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub "Customer-managed CMK for ${AWS::StackName} S3, DynamoDB, and secrets."
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EnableIAMUserPermissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+          - Sid: AllowServiceEncryptionAtRest
+            Effect: Allow
+            Principal:
+              Service:
+                - s3.amazonaws.com
+                - dynamodb.amazonaws.com
+                - secretsmanager.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+              - kms:CreateGrant
+            Resource: "*"
+
+  DraftCodeKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/${AWS::StackName}-cmk
+      TargetKeyId: !Ref DraftCodeKey
+
+  # Bearer token + base URL for the external OpenAI-compatible gpt-5.5 gateway.
+  # Provisioned encrypted with the CMK; the value is rotated/overwritten out of
+  # band (the real EC2 gateway URL is not committed).
+  GatewayApiKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${AWS::StackName}-gpt55-gateway"
+      Description: Bearer token and base URL for the external gpt-5.5 gateway.
+      KmsKeyId: !Ref DraftCodeKey
+      GenerateSecretString:
+        SecretStringTemplate: '{"base_url":"http://REPLACE_WITH_GATEWAY_HOST:8787"}'
+        GenerateStringKey: api_key
+        PasswordLength: 32
+        ExcludePunctuation: true
+
+  # Optional Bedrock Guardrail (disabled by default; this account is Bedrock
+  # region-blocked). Demonstrates the content/PII safety posture for the host
+  # account where Bedrock is available.
+  DraftCodeGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Condition: CreateBedrockGuardrail
+    Properties:
+      Name: !Sub "${AWS::StackName}-scouting-guardrail"
+      Description: Content and PII guardrail for DraftCode LLM scouting output.
+      BlockedInputMessaging: "Blocked by DraftCode guardrails."
+      BlockedOutputsMessaging: "Response withheld by DraftCode guardrails."
+      ContentPolicyConfig:
+        FiltersConfig:
+          - Type: HATE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: INSULTS
+            InputStrength: MEDIUM
+            OutputStrength: MEDIUM
+          - Type: VIOLENCE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: MISCONDUCT
+            InputStrength: HIGH
+            OutputStrength: HIGH
+      SensitiveInformationPolicyConfig:
+        PiiEntitiesConfig:
+          - Type: EMAIL
+            Action: ANONYMIZE
+          - Type: PHONE
+            Action: ANONYMIZE
+          - Type: NAME
+            Action: ANONYMIZE
+
   DraftDataBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -51,7 +154,9 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt DraftCodeKey.Arn
+            BucketKeyEnabled: true
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -63,6 +168,25 @@ Resources:
             Status: Enabled
             Prefix: intermediate/
             ExpirationInDays: 7
+
+  # Deny any non-TLS access to the data bucket (encryption in transit).
+  DraftDataBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DraftDataBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt DraftDataBucket.Arn
+              - !Sub "${DraftDataBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
 
   PredictionRunsTable:
     Type: AWS::DynamoDB::Table
@@ -76,6 +200,8 @@ Resources:
           KeyType: HASH
       SSESpecification:
         SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref DraftCodeKey
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
       TimeToLiveSpecification:
@@ -97,6 +223,19 @@ Resources:
         - DynamoDBWritePolicy:
             TableName: !Ref PredictionRunsTable
         - Statement:
+            # CMK use for KMS-encrypted S3 objects, DynamoDB items, and the secret.
+            - Effect: Allow
+              Action:
+                - kms:Decrypt
+                - kms:GenerateDataKey
+                - kms:DescribeKey
+              Resource: !GetAtt DraftCodeKey.Arn
+            # Least-privilege read of just the gpt-5.5 gateway secret.
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Ref GatewayApiKeySecret
+            # Bedrock left in place for the host account; this account is blocked.
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
@@ -174,6 +313,13 @@ Resources:
             FunctionName: !Ref PredictionFunction
         - DynamoDBWritePolicy:
             TableName: !Ref PredictionRunsTable
+        # putItem into a KMS-encrypted table requires data-key generation.
+        - Statement:
+            - Effect: Allow
+              Action:
+                - kms:Decrypt
+                - kms:GenerateDataKey
+              Resource: !GetAtt DraftCodeKey.Arn
 
   ScenarioSwarmWorkflow:
     Type: AWS::Serverless::StateMachine
@@ -272,10 +418,21 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
+                - kms:Decrypt
+                - kms:GenerateDataKey
+              Resource: !GetAtt DraftCodeKey.Arn
+        # Distributed Map re-enters this same state machine; scope StartExecution
+        # and execution control to this state machine family instead of "*".
+        - Statement:
+            - Effect: Allow
+              Action:
                 - states:StartExecution
+              Resource: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:ScenarioSwarmWorkflow*"
+            - Effect: Allow
+              Action:
                 - states:DescribeExecution
                 - states:StopExecution
-              Resource: "*"
+              Resource: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:ScenarioSwarmWorkflow*:*"
 
 Outputs:
   PredictionApiUrl:
@@ -288,8 +445,14 @@ Outputs:
     Description: Step Functions Distributed Map workflow for Scenario Swarm runs.
     Value: !Ref ScenarioSwarmWorkflow
   DraftDataBucketName:
-    Description: Encrypted S3 bucket for raw, processed, and prediction artifacts.
+    Description: KMS-encrypted S3 bucket for raw, processed, and prediction artifacts.
     Value: !Ref DraftDataBucket
   PredictionRunsTableName:
-    Description: DynamoDB run ledger table.
+    Description: DynamoDB run ledger table (KMS-encrypted).
     Value: !Ref PredictionRunsTable
+  DraftCodeKeyArn:
+    Description: Customer-managed CMK ARN for the DraftCode data plane.
+    Value: !GetAtt DraftCodeKey.Arn
+  GatewayApiKeySecretArn:
+    Description: Secrets Manager ARN holding the gpt-5.5 gateway bearer token.
+    Value: !Ref GatewayApiKeySecret

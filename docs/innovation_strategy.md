@@ -174,6 +174,30 @@ flowchart LR
 - Add Bedrock explanation over trace JSON.
 - Add Athena/Glue only if data is already uploaded to S3 and time remains.
 
+## AWS 全链路安全 (well-architected)
+
+`infra/template.yaml` hardens the serverless data plane:
+
+- **Customer-managed KMS CMK** (`DraftCodeKey`, rotation on) encrypts the S3
+  artifact bucket (`aws:kms` + bucket keys), the DynamoDB run ledger, and the
+  gpt-5.5 gateway secret. Every role that touches encrypted data carries a
+  least-privilege `kms:Decrypt`/`GenerateDataKey` grant scoped to the key ARN.
+- **Secrets Manager** holds the gpt-5.5 gateway bearer token (CMK-encrypted,
+  generated — never committed); the Lambda gets `secretsmanager:GetSecretValue`
+  on that one secret only.
+- **Encryption in transit**: an S3 bucket policy denies any non-TLS request.
+- **Least-privilege IAM**: the Scenario Swarm Distributed-Map permission was
+  narrowed from `states:*` on `"*"` to this state machine's own
+  `stateMachine:ScenarioSwarmWorkflow*` / `execution:...*` ARNs.
+- **Bedrock Guardrail** (content + PII filters) ships behind a default-off
+  `EnableBedrockGuardrail` condition, ready for the host account that has Bedrock
+  enabled (this personal account is region-blocked).
+
+Validated with `sam validate --lint`. The live stack still runs the prior AES256
+build; this CMK/secrets revision is deploy-ready (`make sam-deploy`) and
+intentionally not re-applied right before the deadline to avoid disturbing the
+working deployment.
+
 ## Roadshow wording
 
 > Our innovation is not another mock draft. We built a Draft Twin that simulates the whole first round as a probability distribution. Because 28% of the score comes from milestone events, the same simulation also answers the milestone questions: long wingspan in picks 4-14, top vertical jumpers in round one, center count, international count, and school concentration. AWS makes this reproducible and auditable: S3 versions the data, Step Functions orchestrates the run, Lambda containers execute the model, DynamoDB records run metadata, and Bedrock explains only the grounded trace.
