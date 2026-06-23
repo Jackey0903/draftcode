@@ -383,11 +383,21 @@ def ingest(
         Path("data/processed"),
         help="Directory for normalized CSV/JSON outputs.",
     ),
+    divergence_llm: bool = typer.Option(
+        True,
+        "--divergence-llm/--no-divergence-llm",
+        help="Use cached gpt-5.5 divergence adjudication during consensus fusion.",
+    ),
 ) -> None:
     """Normalize official 2026 source workbooks into engine-ready data files."""
     from draftcode.official import ingest_official
 
-    report = ingest_official(source, out)
+    report = ingest_official(source, out, use_llm_divergence=divergence_llm)
+    console.print(
+        "[bold]LLM divergence:[/bold] "
+        f"{'on' if divergence_llm else 'off'}; "
+        f"verdicts applied: {report.get('llm_divergence_verdict_count', 0)}"
+    )
     _print_ingest_report(report)
 
 

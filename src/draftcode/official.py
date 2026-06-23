@@ -9,6 +9,7 @@ from typing import Any
 
 from openpyxl import load_workbook
 
+from draftcode import divergence
 from draftcode.dossier import TeamDossier, load_team_dossiers
 
 ZERO_WIDTH_NON_JOINER = "\u200c"
@@ -53,6 +54,10 @@ PROSPECT_COLUMNS = [
     "divergence_gap",
     "divergence_type",
     "divergence_reason",
+    "divergence_llm_verdict",
+    "divergence_llm_market_weight",
+    "divergence_llm_confidence",
+    "divergence_llm_reasoning",
     "fused_score",
 ]
 
@@ -284,6 +289,7 @@ def ingest_official(
     source_dir: Path,
     out_dir: Path,
     dossier_path: Path | None = None,
+    use_llm_divergence: bool = True,
 ) -> dict[str, Any]:
     source_dir = Path(source_dir)
     out_dir = Path(out_dir)
@@ -316,7 +322,11 @@ def ingest_official(
         shooting=shooting_table.rows_by_name,
         board_by_pool_index=board_by_pool_index,
     )
-    _assign_consensus_ranks(builds)
+    _assign_consensus_ranks(
+        builds,
+        out_dir=out_dir,
+        use_llm_divergence=use_llm_divergence,
+    )
 
     prospect_rows = [build.row for build in sorted(builds, key=lambda item: item.pool.pool_index)]
     draft_order_rows = _read_draft_order(answer_card_path)
@@ -552,6 +562,10 @@ def _build_prospects(
             "divergence_gap": None,
             "divergence_type": "",
             "divergence_reason": "",
+            "divergence_llm_verdict": "",
+            "divergence_llm_market_weight": None,
+            "divergence_llm_confidence": None,
+            "divergence_llm_reasoning": "",
             "fused_score": None,
         }
         builds.append(
@@ -602,19 +616,34 @@ def _shooting_pct(row: dict[str, Any]) -> float | None:
     return made_total / attempts_total
 
 
-def _assign_consensus_ranks(builds: list[ProspectBuild]) -> None:
+def _assign_consensus_ranks(
+    builds: list[ProspectBuild],
+    *,
+    out_dir: Path | None = None,
+    use_llm_divergence: bool = True,
+) -> None:
     _assign_fallback_scores(builds)
     handbook_builds = [build for build in builds if build.row["board_source"] == "handbook"]
     fallback_builds = [build for build in builds if build.row["board_source"] == "fallback"]
 
     _assign_talent_ranks(builds, handbook_builds, fallback_builds)
     _assign_market_signals_and_divergence(builds)
+    _apply_llm_divergence(builds, out_dir, use_llm_divergence)
+    llm_divergence_active = use_llm_divergence and out_dir is not None
 
     for build in handbook_builds:
         talent_signal = float(build.row["talent_signal"])
         market_signal = build.row["market_signal"]
+        llm_market_weight = build.row.get("divergence_llm_market_weight")
         if market_signal is None:
             fused_score = talent_signal
+        elif llm_divergence_active and llm_market_weight is not None:
+            confidence = float(build.row.get("divergence_llm_confidence") or 0.0)
+            w_rule = 0.6 if build.row["divergence_type"] == "aligned" else 0.5
+            w = w_rule + confidence * (float(llm_market_weight) - w_rule)
+            w = min(1.0, max(0.0, w))
+            fused_score = w * float(market_signal) + (1 - w) * talent_signal
+            build.row["divergence_reason"] = _append_llm_divergence_reason(build.row)
         elif build.row["divergence_type"] == "aligned":
             fused_score = 0.6 * float(market_signal) + 0.4 * talent_signal
         else:
@@ -685,6 +714,175 @@ def _assign_market_signals_and_divergence(builds: list[ProspectBuild]) -> None:
             gap=gap,
             divergence_type=str(build.row["divergence_type"]),
         )
+
+
+def _neutral_divergence_notes(build: ProspectBuild) -> str:
+    """Fact-only context for the LLM adjudicator.
+
+    Deliberately omits the deterministic verdict (market_hype/market_fade) so the
+    model resolves the split on the merits instead of being anchored to the rule
+    label it is meant to second-guess.
+    """
+    row = build.row
+    talent_rank = int(row["talent_rank"])
+    market_rank = float(row["market_rank"])
+    gap = int(row["divergence_gap"])
+    direction = (
+        "the public market is markedly more bullish than the structured talent model"
+        if gap < 0
+        else "the structured talent model is markedly more bullish than the public market"
+    )
+    return (
+        f"{build.pool.name}: talent-model rank #{talent_rank} vs market rank "
+        f"#{market_rank:g} (gap {gap:+d}); {direction}. Decide which signal to trust "
+        "from the measurables and production, without presuming either is correct."
+    )
+
+
+def _apply_llm_divergence(
+    builds: list[ProspectBuild],
+    out_dir: Path | None,
+    use_llm_divergence: bool,
+) -> None:
+    if not use_llm_divergence or out_dir is None:
+        return
+
+    cache_path = Path(out_dir) / "divergence_llm.json"
+    cache = _load_llm_divergence_cache(cache_path)
+
+    for build in builds:
+        if not _needs_llm_divergence(build, cache):
+            continue
+        result = divergence.reason_divergence(
+            name=build.pool.name,
+            position=str(build.row["primary_position"]),
+            talent_profile={
+                "talent_composite": build.row.get("talent_composite"),
+                "true_shooting_pct": build.row.get("true_shooting_pct"),
+                "usage_rate": build.row.get("usage_rate"),
+                "assist_rate": build.row.get("assist_rate"),
+                "rebound_rate": build.row.get("rebound_rate"),
+                "stock_rate": build.row.get("stock_rate"),
+                "age": build.row.get("age"),
+                "height_in": build.row.get("height_in"),
+                "wingspan_in": build.row.get("wingspan_in"),
+                "archetype": build.row.get("archetype"),
+            },
+            talent_rank=int(build.row["talent_rank"]),
+            market_rank=float(build.row["market_rank"]),
+            divergence=int(build.row["divergence_gap"]),
+            notes=_neutral_divergence_notes(build),
+        )
+        entry = _coerce_llm_divergence_entry(result)
+        if entry is not None:
+            cache[build.pool.prospect_id] = entry
+
+    _write_llm_divergence_cache(cache_path, cache)
+
+    for build in builds:
+        entry = cache.get(build.pool.prospect_id)
+        if entry is None:
+            build.row["divergence_llm_verdict"] = ""
+            build.row["divergence_llm_market_weight"] = None
+            build.row["divergence_llm_confidence"] = None
+            build.row["divergence_llm_reasoning"] = ""
+            continue
+        build.row["divergence_llm_verdict"] = entry["verdict"]
+        build.row["divergence_llm_market_weight"] = entry["adjusted_market_weight"]
+        build.row["divergence_llm_confidence"] = entry["confidence"]
+        build.row["divergence_llm_reasoning"] = entry["reasoning"]
+
+
+def _needs_llm_divergence(
+    build: ProspectBuild,
+    cache: dict[str, dict[str, Any]],
+) -> bool:
+    if build.pool.prospect_id in cache:
+        return False
+    if build.row.get("board_source") != "handbook":
+        return False
+    if build.row.get("espn_rank") is None:
+        return False
+    gap = build.row.get("divergence_gap")
+    return gap is not None and abs(int(gap)) >= 8
+
+
+def _load_llm_divergence_cache(path: Path) -> dict[str, dict[str, Any]]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+
+    cache: dict[str, dict[str, Any]] = {}
+    for prospect_id, entry in payload.items():
+        if not isinstance(prospect_id, str):
+            continue
+        coerced = _coerce_llm_divergence_entry(entry)
+        if coerced is not None:
+            cache[prospect_id] = coerced
+    return cache
+
+
+def _write_llm_divergence_cache(
+    path: Path,
+    cache: dict[str, dict[str, Any]],
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(cache, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _coerce_llm_divergence_entry(entry: Any) -> dict[str, Any] | None:
+    if not isinstance(entry, dict):
+        return None
+
+    verdict = entry.get("verdict")
+    if verdict not in divergence.VERDICTS:
+        return None
+
+    market_weight = _unit_interval(entry.get("adjusted_market_weight"))
+    confidence = _unit_interval(entry.get("confidence"))
+    reasoning = entry.get("reasoning")
+    if market_weight is None or confidence is None or not isinstance(reasoning, str):
+        return None
+    reasoning = reasoning.strip()
+    if not reasoning:
+        return None
+
+    return {
+        "verdict": verdict,
+        "adjusted_market_weight": market_weight,
+        "confidence": confidence,
+        "reasoning": reasoning,
+    }
+
+
+def _unit_interval(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if number < 0.0 or number > 1.0:
+        return None
+    return number
+
+
+def _append_llm_divergence_reason(row: dict[str, Any]) -> str:
+    reason = str(row.get("divergence_reason") or "")
+    if "[gpt-5.5:" in reason:
+        return reason
+    verdict = str(row.get("divergence_llm_verdict") or "")
+    market_weight = float(row.get("divergence_llm_market_weight") or 0.0)
+    confidence = float(row.get("divergence_llm_confidence") or 0.0)
+    reasoning = str(row.get("divergence_llm_reasoning") or "").strip()
+    return (
+        f"{reason} [gpt-5.5:{verdict} w={market_weight:g} "
+        f"conf={confidence:g} — {reasoning}]"
+    )
 
 
 def _divergence_type(gap: int) -> str:
@@ -963,6 +1161,7 @@ def _build_report(
         "missing_stats": _missing_stats(builds),
         "market_coverage": _market_coverage(builds),
         "divergence_stats": _divergence_stats(builds),
+        "llm_divergence_verdict_count": _llm_divergence_verdict_count(builds),
         "divergence_top5": divergence_records[:5],
         "dossier_count": dossier_count,
         "team_need_rows": team_need_rows,
@@ -980,6 +1179,10 @@ def _build_report(
             "ingest_report.json",
         ],
     }
+
+
+def _llm_divergence_verdict_count(builds: list[ProspectBuild]) -> int:
+    return sum(1 for build in builds if build.row.get("divergence_llm_verdict"))
 
 
 def _table_match_report(pool: list[PoolProspect], table: RawTable) -> dict[str, Any]:
@@ -1135,6 +1338,12 @@ def _divergence_records(builds: list[ProspectBuild]) -> list[dict[str, Any]]:
                 "divergence_gap": build.row["divergence_gap"],
                 "divergence_type": divergence_type,
                 "divergence_reason": build.row["divergence_reason"],
+                "divergence_llm_verdict": build.row.get("divergence_llm_verdict", ""),
+                "divergence_llm_market_weight": build.row.get(
+                    "divergence_llm_market_weight"
+                ),
+                "divergence_llm_confidence": build.row.get("divergence_llm_confidence"),
+                "divergence_llm_reasoning": build.row.get("divergence_llm_reasoning", ""),
             }
         )
     return sorted(

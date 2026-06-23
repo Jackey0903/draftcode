@@ -34,7 +34,12 @@ def test_ingest_keeps_empty_signal_tables_without_dossier(tmp_path: Path) -> Non
     out_dir = tmp_path / "processed"
     missing_dossier = tmp_path / "missing-team-dossiers.json"
 
-    ingest_official(SOURCE_DIR, out_dir, dossier_path=missing_dossier)
+    ingest_official(
+        SOURCE_DIR,
+        out_dir,
+        dossier_path=missing_dossier,
+        use_llm_divergence=False,
+    )
 
     assert _read_csv(out_dir / "team_needs.csv") == []
     assert _read_csv(out_dir / "mock_signals.csv") == []

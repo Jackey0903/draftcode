@@ -25,7 +25,7 @@ Immediate next build priorities:
 2. ✅ Q1-Q7 milestone calculators from the official answer template — computed inside the Monte Carlo engine on real combine fields.
 3. ✅ Generate the final answer workbook — `draftcode answer` / `make answer` writes `outputs/answer_card.xlsx` (30-pick board + Q1-Q7).
 4. ✅ Monte Carlo scenario simulation with Hungarian assignment — `draftcode simulate` / `make simulate`.
-5. Next: enrich production signals (combine shooting), team needs + mock signals, divergence reasoning (talent vs ESPN), then deploy the SAM stack.
+5. Next: enrich production signals and deploy the SAM stack.
 
 ## Quick start
 
@@ -86,6 +86,25 @@ GM preference scoring is intentionally conservative: for each team-prospect edge
 the Monte Carlo engine computes the deterministic dossier `preference_score`, then
 adds `0.50 * gm_delta`, where `gm_delta` is clamped to `[-0.08, 0.08]`. The trace
 records the raw delta, fixed weight, and weighted score adjustment for audit.
+
+## 创新点1: gpt-5.5 双信号背离
+
+`draftcode ingest` now adjudicates large handbook talent-vs-market splits
+(`abs(divergence_gap) >= 8`) through a deterministic cache at
+`data/processed/divergence_llm.json`. If gpt-5.5 returns a verdict, ingest blends
+the model's existing rule weight with `adjusted_market_weight` by `confidence`,
+then writes the verdict, weight, confidence, and reasoning into `prospects.csv`
+and `divergence.json`. Use `--no-divergence-llm` for a byte-for-byte deterministic
+fallback with the original rule fusion.
+
+Peterson example: 达林·彼得森 is flagged because `talent_rank=14` sits far below
+`market_rank=1.5`, so the deterministic rule labels the split `market_hype`. Given
+only neutral measurables (the rule verdict is never leaked into the prompt),
+gpt-5.5 instead returned `talent_undervalued` — judging the talent rank too
+conservative for an efficient, high-usage big guard with credible playmaking — and
+raised the market weight (w=0.65, confidence 0.64). His consensus rank moves 5 → 4:
+a measured correction, not a full jump to the market's #2, because the prospects
+ranked above him score higher on **both** signals.
 
 ## Real-time intel agent
 

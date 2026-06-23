@@ -49,7 +49,7 @@ def test_preference_weights_change_with_persona() -> None:
 
 def test_ingest_generates_nonempty_team_needs_and_mock_signals(tmp_path: Path) -> None:
     out_dir = tmp_path / "processed"
-    report = ingest_official(SOURCE_DIR, out_dir)
+    report = ingest_official(SOURCE_DIR, out_dir, use_llm_divergence=False)
 
     need_columns, need_rows = _read_csv(out_dir / "team_needs.csv")
     signal_columns, signal_rows = _read_csv(out_dir / "mock_signals.csv")

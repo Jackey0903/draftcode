@@ -22,7 +22,7 @@ def test_feet_inches_parser() -> None:
 
 def test_normalizer_outputs_engine_ready_files(tmp_path: Path) -> None:
     out_dir = tmp_path / "processed"
-    report = ingest_official(SOURCE_DIR, out_dir)
+    report = ingest_official(SOURCE_DIR, out_dir, use_llm_divergence=False)
 
     prospects = _read_csv(out_dir / "prospects.csv")
     draft_order = _read_csv(out_dir / "draft_order.csv")
@@ -42,7 +42,7 @@ def test_normalizer_outputs_engine_ready_files(tmp_path: Path) -> None:
 
 def test_key_anchors(tmp_path: Path) -> None:
     out_dir = tmp_path / "processed"
-    ingest_official(SOURCE_DIR, out_dir)
+    ingest_official(SOURCE_DIR, out_dir, use_llm_divergence=False)
     rows = _read_csv(out_dir / "prospects.csv")
     by_id = {row["prospect_id"]: row for row in rows}
 
@@ -61,7 +61,7 @@ def test_key_anchors(tmp_path: Path) -> None:
 
 def test_engine_can_load_official_prospects(tmp_path: Path) -> None:
     out_dir = tmp_path / "processed"
-    ingest_official(SOURCE_DIR, out_dir)
+    ingest_official(SOURCE_DIR, out_dir, use_llm_divergence=False)
 
     prospects = load_prospects(out_dir)
 
@@ -73,8 +73,8 @@ def test_normalizer_is_deterministic(tmp_path: Path) -> None:
     first_dir = tmp_path / "first"
     second_dir = tmp_path / "second"
 
-    ingest_official(SOURCE_DIR, first_dir)
-    ingest_official(SOURCE_DIR, second_dir)
+    ingest_official(SOURCE_DIR, first_dir, use_llm_divergence=False)
+    ingest_official(SOURCE_DIR, second_dir, use_llm_divergence=False)
 
     assert (first_dir / "prospects.csv").read_bytes() == (
         second_dir / "prospects.csv"

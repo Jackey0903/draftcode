@@ -84,6 +84,23 @@ P(player selected by team at pick)
   + milestone-aware scenario value
 ```
 
+Innovation point 1 is a cache-backed gpt-5.5 divergence adjudicator inside
+`draftcode ingest`. For handbook players with `abs(divergence_gap) >= 8`, the
+pipeline asks gpt-5.5 whether the split is `market_hype`, `talent_undervalued`,
+or `true_split`, persists the verdict in `divergence_llm.json`, and uses
+`confidence` to blend the existing deterministic market weight with
+`adjusted_market_weight`. The no-cache/no-LLM path keeps the original arithmetic.
+
+The concrete test case is 达林·彼得森: `talent_rank=14` versus `market_rank=1.5`,
+which the deterministic rule labels `market_hype`. From neutral measurables alone,
+gpt-5.5 returned `talent_undervalued` (the talent rank is too conservative for an
+efficient, high-usage big guard with credible playmaking), raised the market weight
+to 0.65 at confidence 0.64, and moved his consensus rank 5 → 4. The adjudicator is
+deliberately measured: it corrects the misclassification without discarding the
+talent model, so Peterson still lands behind the prospects that lead on both
+signals. The other six flagged splits all came back `true_split`, i.e. gpt-5.5
+declined to swing the stats-darlings hard — an auditable, conservative profile.
+
 Innovation point 2 lands as a deterministic LLM-once GM layer: `draftcode warroom`
 asks gpt-5.5 once per team for small candidate deltas, caches them in
 `outputs/llm/gm_preferences.json`, and `draftcode simulate` reads that static JSON

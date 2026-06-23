@@ -23,6 +23,9 @@ data/processed/*
 outputs/*
 !outputs/.gitkeep
 
+# 本地交接文档(含 API key / EC2 凭证，绝不提交)
+HANDOFF.md
+
 *.log
 *.sqlite
 *.parquet
