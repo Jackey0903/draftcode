@@ -23,6 +23,10 @@ def build_audit(twin_path: Path, llm_dir: Path, data_dir: Path) -> dict[str, Any
     gm_preferences_payload = _read_optional_json(gm_preferences_path)
     prospects_payload = _read_optional_prospects(prospects_path)
 
+    odds_index = _read_optional_odds(prospects_path)
+    axis2_payload = _read_optional_json(data_dir / "divergence_axis2.json")
+    axis2_index = axis2_payload if isinstance(axis2_payload, dict) else {}
+
     explanation_index = _build_explanation_index(explanations_payload)
     gm_preferences = _build_gm_index(gm_preferences_payload)
     divergence_index = prospects_payload if prospects_payload is not None else {}
@@ -40,6 +44,8 @@ def build_audit(twin_path: Path, llm_dir: Path, data_dir: Path) -> dict[str, Any
         matches_most_likely = prospect_id == most_likely_id
         explanation = explanation_index.get((pick_number, abbreviation, prospect_id))
         divergence = divergence_index.get(prospect_id)
+        odds = odds_index.get(prospect_id)
+        axis2_divergence = axis2_index.get(prospect_id)
         gm_influence = _gm_influence(gm_preferences, abbreviation, prospect_id)
         low_confidence = bool(pick_details.get("low_confidence", False))
         if pick_number in low_confidence_picks:
@@ -62,6 +68,8 @@ def build_audit(twin_path: Path, llm_dir: Path, data_dir: Path) -> dict[str, Any
                 "low_confidence": low_confidence,
                 "explanation": explanation,
                 "divergence": divergence,
+                "odds": odds,
+                "axis2_divergence": axis2_divergence,
                 "gm_influence": gm_influence,
             }
         )
@@ -81,6 +89,13 @@ def build_audit(twin_path: Path, llm_dir: Path, data_dir: Path) -> dict[str, Any
         "gm_influenced_picks": sum(
             1 for pick in audit_picks if pick["gm_influence"] is not None
         ),
+        "odds_backed_picks": sum(1 for pick in audit_picks if pick["odds"] is not None),
+        "axis2_divergence_picks": sum(
+            1
+            for pick in audit_picks
+            if isinstance(pick["axis2_divergence"], Mapping)
+            and pick["axis2_divergence"].get("divergence_type_axis2") not in (None, "aligned")
+        ),
         "red_team_challenges": len(red_team["questions"]),
         "low_confidence_picks": sum(1 for pick in audit_picks if pick["low_confidence"]),
     }
@@ -97,6 +112,8 @@ def build_audit(twin_path: Path, llm_dir: Path, data_dir: Path) -> dict[str, Any
             if gm_preferences_payload is not None
             else None,
             "prospects": str(prospects_path) if prospects_payload is not None else None,
+            "odds": str(prospects_path) if odds_index else None,
+            "axis2": str(data_dir / "divergence_axis2.json") if axis2_index else None,
         },
         "picks": audit_picks,
         "milestones": twin.get("milestones", []),
@@ -124,6 +141,27 @@ def _read_optional_json(path: Path) -> dict[str, Any] | None:
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return None
     return payload if isinstance(payload, dict) else None
+
+
+def _read_optional_odds(path: Path) -> dict[str, dict[str, Any]]:
+    if not path.is_file():
+        return {}
+    try:
+        with path.open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle))
+    except (OSError, UnicodeDecodeError, csv.Error):
+        return {}
+    odds: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        prospect_id = _csv_text(row.get("prospect_id"))
+        signal = _optional_float(row.get("odds_signal"))
+        if not prospect_id or signal is None:
+            continue
+        odds[prospect_id] = {
+            "odds_signal": signal,
+            "odds_rank": _optional_float(row.get("odds_rank")),
+        }
+    return odds
 
 
 def _read_optional_prospects(path: Path) -> dict[str, dict[str, Any]] | None:

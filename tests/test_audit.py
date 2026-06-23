@@ -25,6 +25,8 @@ def test_build_audit_joins_prediction_evidence_and_redteam(tmp_path: Path) -> No
         "picks_diverging_from_most_likely": 1,
         "llm_divergence_verdicts": 1,
         "gm_influenced_picks": 1,
+        "odds_backed_picks": 0,
+        "axis2_divergence_picks": 0,
         "red_team_challenges": 2,
         "low_confidence_picks": 1,
     }
@@ -86,6 +88,8 @@ def test_build_audit_gracefully_degrades_without_optional_artifacts(
         "redteam": None,
         "gm_preferences": None,
         "prospects": None,
+        "odds": None,
+        "axis2": None,
     }
     assert audit["red_team"] == {"used_llm": False, "questions": []}
     assert all(pick["explanation"] is None for pick in audit["picks"])
