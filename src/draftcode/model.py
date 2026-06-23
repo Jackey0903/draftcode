@@ -143,7 +143,10 @@ class DraftPredictor:
         index: dict[str, dict[str, float]] = defaultdict(dict)
         for signal in mock_signals:
             current = index[signal.abbreviation].get(signal.prospect_id, 0.0)
-            index[signal.abbreviation][signal.prospect_id] = max(current, _clamp(signal.signal_strength))
+            index[signal.abbreviation][signal.prospect_id] = max(
+                current,
+                _clamp(signal.signal_strength),
+            )
         return index
 
     @staticmethod

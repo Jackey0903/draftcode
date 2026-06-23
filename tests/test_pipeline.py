@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from draftcode.io import load_draft_order, load_mock_signals, load_prospects, load_team_needs
+from draftcode.io import (
+    load_draft_order,
+    load_mock_signals,
+    load_prospects,
+    load_team_needs,
+)
 from draftcode.lambda_handler import handler
 from draftcode.model import DraftPredictor
 from draftcode.pipeline import run_prediction
-
 
 SAMPLE_DIR = Path("data/sample")
 

@@ -2,7 +2,7 @@ PYTHON ?= python3.11
 VENV ?= .venv
 UV ?= uv
 
-.PHONY: venv install install-full install-quality test lint predict validate-sample report dashboard api aws-check sam-validate sam-pull-base sam-build clean
+.PHONY: venv install install-full install-quality test lint predict simulate ingest answer validate-sample report dashboard api aws-check sam-validate sam-pull-base sam-build clean
 
 venv:
 	test -x $(VENV)/bin/python || $(UV) venv --python $(PYTHON) $(VENV)
@@ -24,6 +24,15 @@ lint:
 
 predict:
 	$(VENV)/bin/draftcode predict --data-dir data/sample --output outputs/predictions.csv --trace outputs/trace.json
+
+simulate:
+	$(VENV)/bin/draftcode simulate --data-dir data/sample --output outputs/twin.json --draws 1000 --seed 42
+
+ingest:
+	$(VENV)/bin/draftcode ingest --source data/raw/official --out data/processed
+
+answer:
+	$(VENV)/bin/draftcode answer --data-dir data/processed --template data/raw/official/answer_card_template.xlsx --out outputs/answer_card.xlsx --draws 1000 --seed 42 --team-id Team01
 
 validate-sample:
 	$(VENV)/bin/draftcode validate-output --predictions outputs/predictions.csv --expected-picks 10

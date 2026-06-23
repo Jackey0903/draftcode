@@ -14,7 +14,11 @@ from draftcode.model import DraftPredictor
 from draftcode.schemas import DraftPick
 
 
-def run_prediction(data_dir: Path, output: Path | None = None, trace_path: Path | None = None) -> list[DraftPick]:
+def run_prediction(
+    data_dir: Path,
+    output: Path | None = None,
+    trace_path: Path | None = None,
+) -> list[DraftPick]:
     prospects = load_prospects(data_dir)
     draft_order = load_draft_order(data_dir)
     team_needs = load_team_needs(data_dir)
