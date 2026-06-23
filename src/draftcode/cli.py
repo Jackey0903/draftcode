@@ -348,6 +348,11 @@ def odds(
         "--apply",
         help="Write prospects.csv/odds_signals.csv. Default is dry-run preview.",
     ),
+    divergence_llm: bool = typer.Option(
+        True,
+        "--divergence-llm/--no-divergence-llm",
+        help="Use gpt-5.5 to adjudicate axis-2 (mock vs odds) divergence.",
+    ),
 ) -> None:
     """Aggregate externally supplied betting odds into de-vigged money signals."""
     sources = _load_odds_sources(odds_file or [], odds_dir)
@@ -357,7 +362,9 @@ def odds(
 
     prospect_names = _read_market_prospect_names(data_dir)
     report = aggregate_odds(sources, prospect_names)
-    result = apply_odds(report, data_dir, dry_run=not apply_changes)
+    result = apply_odds(
+        report, data_dir, dry_run=not apply_changes, use_llm_divergence=divergence_llm
+    )
     _print_odds_result(report, result)
 
 

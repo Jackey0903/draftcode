@@ -139,3 +139,83 @@ def _number_in_unit_interval(value: Any) -> float | None:
     if number < 0.0 or number > 1.0:
         return None
     return number
+
+
+# --------------------------------------------------------------------------- #
+# Axis-2 divergence: expert/mock consensus vs money/odds (creative point 1, v3).
+# --------------------------------------------------------------------------- #
+ODDS_VERDICTS = {"odds_sharp", "mock_lagging", "true_split"}
+
+ODDS_DIVERGENCE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["verdict", "confidence", "reasoning"],
+    "properties": {
+        "verdict": {"type": "string", "enum": ["odds_sharp", "mock_lagging", "true_split"]},
+        "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "reasoning": {"type": "string", "minLength": 1},
+    },
+}
+
+
+def reason_odds_divergence(
+    name: str,
+    position: str,
+    market_rank: float,
+    odds_rank: float,
+    divergence: int,
+    notes: str,
+) -> dict[str, Any] | None:
+    """Ask gpt-5.5 to adjudicate an expert(mock)-vs-money(odds) split.
+
+    Money usually leads expert consensus (it reacts to insider news faster), so
+    a large split is a candidate alpha signal. Any transport/parse problem -> None
+    so the caller falls back to the deterministic rule label.
+    """
+    payload = {
+        "name": name,
+        "position": position,
+        "mock_consensus_rank": market_rank,
+        "odds_implied_rank": odds_rank,
+        "divergence": divergence,
+        "notes": notes,
+    }
+    response = llm_client.complete(_odds_prompt(payload), schema=ODDS_DIVERGENCE_SCHEMA)
+    if response is None:
+        return None
+    return _parse_odds_response(response)
+
+
+def _odds_prompt(payload: Mapping[str, Any]) -> str:
+    return (
+        "You are a senior NBA draft analyst resolving a disagreement between the "
+        "public mock-draft consensus (expert opinion) and the sportsbook odds "
+        "(real money). Money typically reacts to insider news faster than mocks.\n"
+        "\n"
+        "Classify the split with exactly one verdict:\n"
+        "- odds_sharp: the money is ahead of the mocks (likely insider/late info); "
+        "trust the odds-implied landing.\n"
+        "- mock_lagging: similar, but specifically the mock consensus is stale and "
+        "hasn't caught up to the market.\n"
+        "- true_split: both signals are credible and should be balanced.\n"
+        "\n"
+        "Player input JSON:\n"
+        f"{json.dumps(payload, ensure_ascii=False, sort_keys=True)}"
+    )
+
+
+def _parse_odds_response(response: str) -> dict[str, Any] | None:
+    try:
+        parsed = json.loads(_json_object_text(response))
+    except (TypeError, json.JSONDecodeError):
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    verdict = parsed.get("verdict")
+    if verdict not in ODDS_VERDICTS:
+        return None
+    confidence = _number_in_unit_interval(parsed.get("confidence"))
+    reasoning = parsed.get("reasoning")
+    if confidence is None or not isinstance(reasoning, str) or not reasoning.strip():
+        return None
+    return {"verdict": verdict, "confidence": confidence, "reasoning": reasoning.strip()}

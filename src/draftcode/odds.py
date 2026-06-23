@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from draftcode import llm_client
+from draftcode.divergence import reason_odds_divergence
 from draftcode.market import (
     _first_text,
     _format_float,
@@ -142,11 +143,19 @@ def aggregate_odds(
     )
 
 
-def apply_odds(report: OddsReport, data_dir: Path, *, dry_run: bool = True) -> dict[str, Any]:
-    """Write per-prospect odds signals + the per-pick anchor distribution."""
+def apply_odds(
+    report: OddsReport,
+    data_dir: Path,
+    *,
+    dry_run: bool = True,
+    use_llm_divergence: bool = True,
+) -> dict[str, Any]:
+    """Write per-prospect odds signals, the per-pick anchor, and axis-2 divergence."""
     prospects_path = data_dir / "prospects.csv"
     draft_order_path = data_dir / "draft_order.csv"
     odds_signals_path = data_dir / "odds_signals.csv"
+    axis2_path = data_dir / "divergence_axis2.json"
+    axis2_cache_path = data_dir / "divergence_odds_llm.json"
 
     prospect_fields, prospect_rows = _read_csv_with_fields(prospects_path)
     _, draft_order_rows = _read_csv_with_fields(draft_order_path)
@@ -156,6 +165,11 @@ def apply_odds(report: OddsReport, data_dir: Path, *, dry_run: bool = True) -> d
     after_coverage = _odds_coverage(prospect_rows)
     odds_signal_rows = _build_odds_signal_rows(report, prospect_rows, draft_order_rows)
 
+    axis2_cache = _load_axis2_cache(axis2_cache_path)
+    axis2_records = _build_axis2_records(
+        report, prospect_rows, use_llm=use_llm_divergence, cache=axis2_cache
+    )
+
     wrote_csv = False
     if not dry_run and report.rankings:
         _write_csv(
@@ -164,6 +178,12 @@ def apply_odds(report: OddsReport, data_dir: Path, *, dry_run: bool = True) -> d
             prospect_rows,
         )
         _write_csv(odds_signals_path, ODDS_SIGNAL_COLUMNS, odds_signal_rows)
+        axis2_path.write_text(
+            json.dumps(axis2_records, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        if use_llm_divergence:
+            _write_axis2_cache(axis2_cache_path, axis2_cache)
         wrote_csv = True
 
     result: dict[str, Any] = {
@@ -175,6 +195,10 @@ def apply_odds(report: OddsReport, data_dir: Path, *, dry_run: bool = True) -> d
         "odds_signal_changes": signal_changes,
         "odds_signal_rows": len(odds_signal_rows),
         "anchored_picks": sorted(report.per_pick_distribution),
+        "axis2_divergence_count": len(axis2_records),
+        "axis2_llm_verdicts": sum(
+            1 for record in axis2_records.values() if record.get("divergence_odds_llm_verdict")
+        ),
         "wrote_csv": wrote_csv,
     }
     audit_path = _write_audit(report, result)
@@ -351,6 +375,119 @@ def _build_odds_signal_rows(
 
 def _odds_coverage(rows: list[dict[str, str]]) -> int:
     return sum(1 for row in rows if row.get("odds_signal", "").strip())
+
+
+# --------------------------------------------------------------------------- #
+# Axis-2 divergence: expert/mock consensus vs money/odds (two-axis, v3).
+# --------------------------------------------------------------------------- #
+_AXIS2_GAP_THRESHOLD = 8
+
+
+def _build_axis2_records(
+    report: OddsReport,
+    prospect_rows: list[dict[str, str]],
+    *,
+    use_llm: bool,
+    cache: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    name_index = _prospect_name_index([row.get("name", "") for row in prospect_rows])
+    info_by_name: dict[str, tuple[str, float | None, str]] = {}
+    for row in prospect_rows:
+        name = row.get("name", "").strip()
+        if not name:
+            continue
+        market = row.get("market_rank", "").strip()
+        info_by_name[name] = (
+            row.get("prospect_id", "").strip(),
+            float(market) if market else None,
+            row.get("primary_position", "").strip(),
+        )
+
+    records: dict[str, dict[str, Any]] = {}
+    for consensus in report.rankings:
+        resolved = _resolve_prospect_name(consensus.prospect_name, name_index)
+        if resolved is None or resolved not in info_by_name:
+            continue
+        prospect_id, market_rank, position = info_by_name[resolved]
+        if not prospect_id or market_rank is None:
+            continue
+        gap = int(round(market_rank - consensus.odds_rank))
+        record: dict[str, Any] = {
+            "prospect_id": prospect_id,
+            "prospect_name": resolved,
+            "market_rank": market_rank,
+            "odds_rank": consensus.odds_rank,
+            "divergence_gap_axis2": gap,
+            "divergence_type_axis2": _axis2_type(gap),
+            "divergence_reason_axis2": _axis2_reason(
+                resolved, market_rank, consensus.odds_rank, gap
+            ),
+        }
+        if use_llm and abs(gap) >= _AXIS2_GAP_THRESHOLD:
+            verdict = cache.get(prospect_id)
+            if verdict is None:
+                verdict = reason_odds_divergence(
+                    name=resolved,
+                    position=position,
+                    market_rank=market_rank,
+                    odds_rank=float(consensus.odds_rank),
+                    divergence=gap,
+                    notes=record["divergence_reason_axis2"],
+                )
+                if verdict is not None:
+                    cache[prospect_id] = verdict
+            if verdict is not None:
+                record["divergence_odds_llm_verdict"] = verdict["verdict"]
+                record["divergence_odds_llm_confidence"] = verdict["confidence"]
+                record["divergence_odds_llm_reasoning"] = verdict["reasoning"]
+        records[prospect_id] = record
+    return records
+
+
+def _axis2_type(gap: int) -> str:
+    if abs(gap) <= _AXIS2_GAP_THRESHOLD:
+        return "aligned"
+    # gap = market_rank - odds_rank > 0 -> mocks rank later than money -> money bullish.
+    return "odds_sharp" if gap > 0 else "mock_sharp"
+
+
+def _axis2_reason(name: str, market_rank: float, odds_rank: float, gap: int) -> str:
+    gap_text = f"+{gap}" if gap > 0 else str(gap)
+    if gap > _AXIS2_GAP_THRESHOLD:
+        return (
+            f"{name}:mock 共识第{market_rank:g}但赔率隐含第{odds_rank:g}(gap{gap_text}):"
+            "资金比专家更看好,可能内幕领先。"
+        )
+    if gap < -_AXIS2_GAP_THRESHOLD:
+        return (
+            f"{name}:mock 共识第{market_rank:g}高于赔率隐含第{odds_rank:g}(gap{gap_text}):"
+            "专家比资金更看好,需防 mock 群体思维。"
+        )
+    return (
+        f"{name}:mock 第{market_rank:g}与赔率第{odds_rank:g}(gap{gap_text}):专家与资金基本一致。"
+    )
+
+
+def _load_axis2_cache(path: Path) -> dict[str, dict[str, Any]]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    cache: dict[str, dict[str, Any]] = {}
+    for prospect_id, entry in payload.items():
+        if isinstance(prospect_id, str) and isinstance(entry, dict) and entry.get("verdict"):
+            cache[prospect_id] = entry
+    return cache
+
+
+def _write_axis2_cache(path: Path, cache: dict[str, dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(cache, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _write_audit(report: OddsReport, result: Mapping[str, Any]) -> Path:

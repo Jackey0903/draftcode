@@ -5,7 +5,15 @@ import json
 from pathlib import Path
 
 from draftcode import llm_client
-from draftcode.odds import aggregate_odds, american_to_implied, apply_odds, devig
+from draftcode import odds as odds_mod
+from draftcode.odds import (
+    ConsensusOdds,
+    OddsReport,
+    aggregate_odds,
+    american_to_implied,
+    apply_odds,
+    devig,
+)
 
 ESPN_ODDS = {
     "markets": [
@@ -138,6 +146,42 @@ def test_aggregate_odds_llm_fallback_empty(tmp_path: Path, monkeypatch) -> None:
     assert result["wrote_csv"] is False
     assert not (data_dir / "odds_signals.csv").exists()
     assert Path(result["audit_path"]).exists()
+
+
+def test_axis2_divergence_rule_and_llm(monkeypatch) -> None:
+    monkeypatch.setattr(
+        odds_mod,
+        "reason_odds_divergence",
+        lambda **kwargs: {"verdict": "odds_sharp", "confidence": 0.7, "reasoning": "money leads"},
+    )
+    report = OddsReport(
+        rankings=[
+            ConsensusOdds(
+                prospect_name="达林 彼得森",
+                odds_rank=2,
+                odds_signal=0.9,
+                n_sources=1,
+                sources=["ESPN"],
+            )
+        ],
+        source_names=["ESPN"],
+        per_pick_distribution={2: [("达林 彼得森", 0.9)]},
+    )
+    prospect_rows = [
+        {"prospect_id": "p051", "name": "达林 彼得森", "market_rank": "15", "primary_position": "G"}
+    ]
+    cache: dict = {}
+    records = odds_mod._build_axis2_records(report, prospect_rows, use_llm=True, cache=cache)
+
+    record = records["p051"]
+    assert record["divergence_gap_axis2"] == 13  # mock 15 vs odds 2
+    assert record["divergence_type_axis2"] == "odds_sharp"
+    assert record["divergence_odds_llm_verdict"] == "odds_sharp"
+    assert cache["p051"]["verdict"] == "odds_sharp"  # cached for determinism
+
+    # Rule-only boundaries.
+    assert odds_mod._axis2_type(3) == "aligned"
+    assert odds_mod._axis2_type(-12) == "mock_sharp"
 
 
 def _fake_odds_complete(prompt: str, schema=None, timeout: int = 180) -> str:
