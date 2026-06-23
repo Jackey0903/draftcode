@@ -84,6 +84,13 @@ P(player selected by team at pick)
   + milestone-aware scenario value
 ```
 
+Innovation point 2 lands as a deterministic LLM-once GM layer: `draftcode warroom`
+asks gpt-5.5 once per team for small candidate deltas, caches them in
+`outputs/llm/gm_preferences.json`, and `draftcode simulate` reads that static JSON
+while sampling. The edge score becomes `deterministic_preference_score + 0.50 *
+clamp(gm_delta, -0.08, 0.08)`, so fixed inputs plus fixed cache bytes reproduce
+the same Monte Carlo output without another LLM call.
+
 The important part is that milestone answers are derived from the same simulated draft distribution, not answered separately.
 
 ### 3. Monte Carlo simulator

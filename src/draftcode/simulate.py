@@ -4,7 +4,7 @@ import math
 import random
 import statistics
 from collections import Counter, defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 
 from draftcode.dossier import TeamDossier
@@ -31,6 +31,8 @@ class SimulationConfig:
 
 _MilestoneValue = float | str
 _MilestoneCalculator = Callable[[list[str]], _MilestoneValue]
+_GM_DELTA_LIMIT = 0.08
+_GM_PREFERENCE_WEIGHT = 0.50
 
 
 @dataclass(frozen=True)
@@ -243,7 +245,7 @@ class MonteCarloDraftTwin:
         self.config = config
         self.weights = weights or ModelWeights()
         self.dossiers = dossiers
-        self.gm_preferences = gm_preferences or {}
+        self.gm_preferences = _normalize_gm_preferences(gm_preferences)
         self.preference_trace: list[dict[str, object]] = []
         self._prospect_index = {prospect.prospect_id: prospect for prospect in prospects}
         self._prospect_rank = {
@@ -271,7 +273,7 @@ class MonteCarloDraftTwin:
             milestone.id: [] for milestone in self._milestones
         }
 
-        capture_trace = bool(self.dossiers) and shard_index == 0
+        capture_trace = (bool(self.dossiers) or bool(self.gm_preferences)) and shard_index == 0
         if capture_trace:
             self.preference_trace = []
 
@@ -385,7 +387,10 @@ class MonteCarloDraftTwin:
                 )
                 for prospect in available.values()
             ]
-            scored.sort(key=lambda row: (row["score"], -row["consensus_rank"]), reverse=True)
+            scored.sort(
+                key=lambda row: (float(row["score"]), -int(row["consensus_rank"])),
+                reverse=True,
+            )
             if capture_trace:
                 trace_picks.append(
                     {
@@ -456,7 +461,7 @@ class MonteCarloDraftTwin:
         mock_index: dict[str, dict[str, float]],
         rng: random.Random,
         weights: ModelWeights,
-    ) -> dict[str, float | str | int]:
+    ) -> dict[str, object]:
         components = predictor._score_prospect(
             prospect=prospect,
             pick_number=team.pick,
@@ -469,7 +474,10 @@ class MonteCarloDraftTwin:
             float(components["board_score"]) + rng.gauss(0.0, self.config.board_jitter)
         )
         dossier = None if self.dossiers is None else self.dossiers.get(team.abbreviation)
-        llm_delta = self._gm_delta(team.abbreviation, str(components["prospect_id"]))
+        llm_raw_delta, llm_score_adjustment = self._gm_adjustment(
+            team.abbreviation,
+            str(components["prospect_id"]),
+        )
         if dossier is None:
             score = (
                 weights.board * (0.78 * board_eff + 0.22 * float(components["production_score"]))
@@ -477,19 +485,31 @@ class MonteCarloDraftTwin:
                 + weights.team_need * float(components["need_score"])
                 + weights.mock_signal * float(components["mock_score"])
             )
+            adjusted_score = _clamp(score + llm_score_adjustment)
             return {
                 "prospect_id": components["prospect_id"],
                 "name": components["name"],
                 "consensus_rank": components["consensus_rank"],
-                "score": _clamp(score + llm_delta),
+                "score": adjusted_score,
+                "preference_breakdown": {
+                    "score_before_llm": round(_clamp(score), 4),
+                    "llm_raw_delta": round(llm_raw_delta, 4),
+                    "llm_weight": _GM_PREFERENCE_WEIGHT,
+                    "llm_delta": round(llm_score_adjustment, 4),
+                    "score_after_llm": round(adjusted_score, 4),
+                },
             }
 
         preference_components = dict(components)
         preference_components["board_score"] = board_eff
         preference_components["pick_number"] = team.pick
         score, breakdown = preference_score(dossier, prospect, preference_components)
-        score = _clamp(score + llm_delta)
-        breakdown["llm_delta"] = llm_delta
+        adjusted_score = _clamp(score + llm_score_adjustment)
+        breakdown["score_before_llm"] = score
+        breakdown["llm_raw_delta"] = llm_raw_delta
+        breakdown["llm_weight"] = _GM_PREFERENCE_WEIGHT
+        breakdown["llm_delta"] = llm_score_adjustment
+        breakdown["score_after_llm"] = adjusted_score
         rounded_breakdown = {
             key: round(value, 4) if isinstance(value, float) else value
             for key, value in breakdown.items()
@@ -498,20 +518,17 @@ class MonteCarloDraftTwin:
             "prospect_id": components["prospect_id"],
             "name": components["name"],
             "consensus_rank": components["consensus_rank"],
-            "score": score,
+            "score": adjusted_score,
             "preference_breakdown": rounded_breakdown,
         }
 
-    def _gm_delta(self, abbreviation: str, prospect_id: str) -> float:
-        try:
-            value = float(self.gm_preferences.get(abbreviation, {}).get(prospect_id, 0.0))
-            return _clamp(value, -0.2, 0.2)
-        except (TypeError, ValueError):
-            return 0.0
+    def _gm_adjustment(self, abbreviation: str, prospect_id: str) -> tuple[float, float]:
+        raw_delta = self.gm_preferences.get(abbreviation, {}).get(prospect_id, 0.0)
+        return raw_delta, raw_delta * _GM_PREFERENCE_WEIGHT
 
     def _choose_candidate(
         self,
-        candidates: list[dict[str, float | str | int]],
+        candidates: list[dict[str, object]],
         rng: random.Random,
     ) -> str:
         if not candidates:
@@ -885,6 +902,31 @@ def aggregate_shards(
         mock_signals=[],
         config=config,
     ).aggregate_shards(shard_results)
+
+
+def _normalize_gm_preferences(
+    gm_preferences: Mapping[str, Mapping[str, object]] | None,
+) -> dict[str, dict[str, float]]:
+    if not isinstance(gm_preferences, Mapping):
+        return {}
+
+    normalized: dict[str, dict[str, float]] = {}
+    for abbreviation, raw_adjustments in gm_preferences.items():
+        if not isinstance(raw_adjustments, Mapping):
+            continue
+        adjustments: dict[str, float] = {}
+        for prospect_id, delta in raw_adjustments.items():
+            try:
+                adjustments[str(prospect_id)] = _clamp(
+                    float(delta),
+                    -_GM_DELTA_LIMIT,
+                    _GM_DELTA_LIMIT,
+                )
+            except (TypeError, ValueError):
+                continue
+        if adjustments:
+            normalized[str(abbreviation)] = dict(sorted(adjustments.items()))
+    return dict(sorted(normalized.items()))
 
 
 def _sorted_count_dict(counter: Counter[str]) -> dict[str, int]:

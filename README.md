@@ -62,13 +62,18 @@ non-zero exit. Set `DRAFTCODE_LLM_DISABLED=1` to force the deterministic fallbac
 
 The local war-room pipeline is LLM-once: it writes JSON cache artifacts first, then
 the simulator reads the persisted GM deltas from `outputs/llm/gm_preferences.json`
-for a deterministic run.
+for a deterministic run. `draftcode simulate` reads that path by default through
+`--gm-preferences`; if the file is missing or invalid, it prints the disabled
+status and falls back to the pure deterministic dossier scorer.
 
 ```bash
 draftcode warroom --data-dir data/processed --output-dir outputs/llm --draws 1000 --seed 42
 
 # CI/offline smoke path: no external LLM calls
 draftcode warroom --data-dir data/processed --output-dir outputs/llm --draws 1000 --seed 42 --offline
+
+# Replay the cached GM preferences without calling an LLM
+draftcode simulate --data-dir data/processed --output outputs/twin.json --gm-preferences outputs/llm/gm_preferences.json
 ```
 
 Artifacts:
@@ -76,6 +81,11 @@ Artifacts:
 - `outputs/llm/gm_preferences.json`: 30 team GM-agent preference deltas.
 - `outputs/llm/explanations.json`: pick-by-pick war-room notes.
 - `outputs/llm/redteam.json`: board and milestone challenges.
+
+GM preference scoring is intentionally conservative: for each team-prospect edge,
+the Monte Carlo engine computes the deterministic dossier `preference_score`, then
+adds `0.50 * gm_delta`, where `gm_delta` is clamped to `[-0.08, 0.08]`. The trace
+records the raw delta, fixed weight, and weighted score adjustment for audit.
 
 ## Real-time intel agent
 

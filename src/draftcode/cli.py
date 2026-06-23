@@ -22,7 +22,7 @@ from draftcode.io import (
 from draftcode.market import MarketReport, aggregate_mocks, apply_market
 from draftcode.pipeline import run_prediction
 from draftcode.simulate import MonteCarloDraftTwin, SimulationConfig
-from draftcode.warroom import run_warroom
+from draftcode.warroom import load_gm_adjustments, run_warroom
 
 app = typer.Typer(help="NBA draft prediction agent CLI.")
 console = Console()
@@ -84,6 +84,11 @@ def simulate(
     temperature: float = typer.Option(0.06, help="Softmax selection temperature."),
     top_k: int = typer.Option(5, help="Number of candidates eligible per simulated pick."),
     low_confidence_threshold: float = typer.Option(0.5, help="Low-confidence pick cutoff."),
+    gm_preferences: Path = typer.Option(
+        Path("outputs/llm/gm_preferences.json"),
+        "--gm-preferences",
+        help="Optional cached gpt-5.5 GM preference JSON from `draftcode warroom`.",
+    ),
 ) -> None:
     """Run the Milestone-Aware Draft Twin Monte Carlo simulator."""
     settings = get_settings()
@@ -97,6 +102,7 @@ def simulate(
         top_k=top_k,
         low_confidence_threshold=low_confidence_threshold,
     )
+    loaded_gm_preferences = _load_optional_gm_preferences(gm_preferences)
     report = MonteCarloDraftTwin(
         prospects=load_prospects(resolved_data_dir),
         draft_order=load_draft_order(resolved_data_dir),
@@ -104,6 +110,7 @@ def simulate(
         mock_signals=load_mock_signals(resolved_data_dir),
         config=config,
         dossiers=_load_default_dossiers(),
+        gm_preferences=loaded_gm_preferences,
     ).run()
     write_twin_report(resolved_output, report)
 
@@ -835,6 +842,28 @@ def _print_market_result(report: MarketReport, result: dict[str, object]) -> Non
     else:
         console.print("[yellow]No consensus rankings; CSV files left untouched.[/yellow]")
     console.print(f"[green]Wrote market audit:[/green] {result['audit_path']}")
+
+
+def _load_optional_gm_preferences(path: Path) -> dict[str, dict[str, float]]:
+    if not path.is_file():
+        console.print(
+            f"[yellow]gpt-5.5 GM preferences disabled:[/yellow] cache not found at {path}"
+        )
+        return {}
+
+    preferences = load_gm_adjustments(path)
+    delta_count = sum(len(adjustments) for adjustments in preferences.values())
+    if delta_count == 0:
+        console.print(
+            f"[yellow]gpt-5.5 GM preferences disabled:[/yellow] no valid deltas in {path}"
+        )
+        return {}
+
+    console.print(
+        "[green]gpt-5.5 GM preferences enabled:[/green] "
+        f"{path} ({len(preferences)} teams, {delta_count} deltas)"
+    )
+    return preferences
 
 
 def _load_default_dossiers() -> dict[str, TeamDossier] | None:
