@@ -1,0 +1,31 @@
+[project]
+name = "nbadraft-milestone-agent-db"
+version = "0.1.0"
+description = "Deterministic NBA draft milestone database and answer API."
+requires-python = ">=3.11"
+dependencies = [
+    "alembic>=1.13",
+    "fastapi>=0.111",
+    "openpyxl>=3.1",
+    "pandas>=2.2",
+    "psycopg[binary]>=3.1",
+    "pydantic>=2.7",
+    "SQLAlchemy>=2.0",
+    "uvicorn[standard]>=0.29",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

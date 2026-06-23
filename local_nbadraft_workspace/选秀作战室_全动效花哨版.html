@@ -1,0 +1,2146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>选秀作战室 · 全动效花哨版</title>
+  <style>
+    @font-face {
+      font-family: "FusionPixel12";
+      src: url("设计元素/01_设计规范/字体资产/FusionPixel12/fusion-pixel-12px-monospaced-zh_hans.otf.woff2") format("woff2");
+      font-display: swap;
+    }
+
+    :root {
+      --bg: #020604;
+      --bg2: #07140b;
+      --panel: rgba(5, 22, 12, .74);
+      --panel2: rgba(10, 40, 22, .58);
+      --line: rgba(55, 255, 139, .26);
+      --line-hot: rgba(55, 255, 139, .72);
+      --green: #28ff82;
+      --green2: #7cffb0;
+      --cyan: #66f6ff;
+      --red: #ff4c78;
+      --amber: #ffd76b;
+      --white: #f3fff7;
+      --muted: rgba(220, 255, 232, .68);
+      --dim: rgba(220, 255, 232, .42);
+      --shadow: 0 36px 110px rgba(0, 0, 0, .56);
+      --display: "DeyiHei", "得意黑", "SmileySans-Oblique", "Arial Black", "PingFang SC", system-ui, sans-serif;
+      --body: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+      --pixel: "FusionPixel12", "OCR-A BT", "Menlo", "Consolas", monospace;
+      --serif: "Hiragino Mincho ProN", "Songti SC", "STSong", serif;
+    }
+
+    * { box-sizing: border-box; }
+    html {
+      height: 100%;
+      background: var(--bg);
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+    }
+    body {
+      margin: 0;
+      min-height: 100%;
+      color: var(--white);
+      font-family: var(--body);
+      background: var(--bg);
+      overflow-x: hidden;
+      letter-spacing: 0;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle at 50% 46%, transparent 0, rgba(0,0,0,.2) 42%, #000 72%);
+      opacity: .38;
+      z-index: 1;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background:
+        radial-gradient(circle at 50% 22%, rgba(55,255,139,.14), transparent 36%),
+        radial-gradient(circle at 86% 74%, rgba(102,246,255,.11), transparent 32%),
+        linear-gradient(90deg, rgba(0,0,0,.62), transparent 18%, transparent 82%, rgba(0,0,0,.65));
+      mix-blend-mode: screen;
+    }
+
+    canvas#matrix-bg,
+    canvas#noise-bg {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+    }
+    #matrix-bg { z-index: 0; opacity: .9; }
+    #noise-bg { z-index: 0; opacity: .44; mix-blend-mode: screen; }
+
+    .progress {
+      position: fixed;
+      inset: 0 auto auto 0;
+      width: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--green), var(--cyan), var(--green));
+      box-shadow: 0 0 24px rgba(55,255,139,.72);
+      z-index: 90;
+    }
+
+    .topbar {
+      position: fixed;
+      z-index: 60;
+      left: 24px;
+      right: 24px;
+      top: 18px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 16px;
+      pointer-events: none;
+    }
+    .brand-mini,
+    .status-chip,
+    .time-chip {
+      pointer-events: auto;
+      border: 1px solid var(--line);
+      background: rgba(3, 17, 9, .68);
+      backdrop-filter: blur(16px) saturate(1.35);
+      box-shadow: 0 0 28px rgba(55,255,139,.08);
+    }
+    .brand-mini {
+      padding: 12px 15px;
+      color: var(--green);
+      font: 850 12px/1 var(--pixel);
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-mini::before,
+    .status-chip::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 14px var(--green);
+      flex: none;
+    }
+    .status-row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .status-chip {
+      padding: 10px 12px;
+      color: var(--white);
+      font: 760 11px/1 var(--pixel);
+      letter-spacing: .11em;
+      text-transform: uppercase;
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      white-space: nowrap;
+    }
+    .time-chip {
+      padding: 10px 12px;
+      color: var(--muted);
+      font: 760 11px/1 var(--pixel);
+      letter-spacing: .12em;
+      white-space: nowrap;
+    }
+
+    .rail {
+      position: fixed;
+      z-index: 65;
+      right: 22px;
+      top: 50%;
+      translate: 0 -50%;
+      display: grid;
+      gap: 9px;
+    }
+    .rail button {
+      width: 11px;
+      height: 11px;
+      padding: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(219,255,232,.45);
+      background: transparent;
+      cursor: pointer;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .rail button.active {
+      background: var(--green);
+      border-color: var(--green);
+      box-shadow: 0 0 20px var(--green);
+      transform: scale(1.36);
+    }
+
+    .deck {
+      position: relative;
+      z-index: 5;
+      scroll-snap-type: y mandatory;
+    }
+    .slide {
+      position: relative;
+      min-height: 100vh;
+      padding: 88px clamp(38px, 7vw, 108px) 146px;
+      display: grid;
+      align-items: center;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      overflow: hidden;
+    }
+    .slide::before {
+      content: "";
+      position: absolute;
+      inset: 42px clamp(24px, 4vw, 70px) 58px;
+      border: 1px solid rgba(55,255,139,.12);
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, transparent, rgba(55,255,139,.08), transparent) 0 0 / 100% 1px no-repeat,
+        radial-gradient(circle at 18% 22%, rgba(55,255,139,.08), transparent 24%),
+        radial-gradient(circle at 82% 78%, rgba(102,246,255,.06), transparent 26%);
+      opacity: .8;
+    }
+    .slide.in-view .cascade {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+    .cascade {
+      opacity: 0;
+      transform: translateY(28px);
+      filter: blur(8px);
+      transition: opacity .8s cubic-bezier(.2,.8,.2,1), transform .8s cubic-bezier(.2,.8,.2,1), filter .8s ease;
+    }
+    .d1 { transition-delay: .08s; }
+    .d2 { transition-delay: .18s; }
+    .d3 { transition-delay: .28s; }
+    .d4 { transition-delay: .38s; }
+    .d5 { transition-delay: .48s; }
+
+    .frame {
+      width: min(1220px, 100%);
+      margin: 0 auto;
+      position: relative;
+      z-index: 3;
+    }
+    .wide { width: min(1320px, 100%); }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
+      gap: clamp(28px, 4vw, 52px);
+      align-items: stretch;
+    }
+    .split.equal { grid-template-columns: 1fr 1fr; }
+    .eyebrow {
+      color: var(--green);
+      font: 860 13px/1 var(--pixel);
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .eyebrow::after {
+      content: "";
+      width: 96px;
+      height: 1px;
+      background: linear-gradient(90deg, var(--green), transparent);
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1, h2, h3 { font-family: var(--display); letter-spacing: 0; }
+    .mega {
+      color: var(--white);
+      font-size: clamp(74px, 13vw, 184px);
+      line-height: .8;
+      font-weight: 1000;
+      transform: skewX(-7deg);
+    }
+    .title {
+      color: var(--white);
+      font-size: clamp(54px, 7vw, 116px);
+      line-height: .84;
+      font-weight: 1000;
+      transform: skewX(-6deg);
+      text-wrap: balance;
+    }
+    .title.glitch,
+    .wordmark {
+      text-shadow:
+        0 0 18px rgba(55,255,139,.72),
+        0 0 62px rgba(55,255,139,.28),
+        3px 0 rgba(255,76,120,.66),
+        -3px 0 rgba(102,246,255,.46);
+      animation: glitchWord 2.8s steps(2) infinite;
+    }
+    .subtitle {
+      color: var(--white);
+      font-size: clamp(24px, 2.5vw, 42px);
+      line-height: 1.22;
+      font-weight: 850;
+      margin-top: 26px;
+      max-width: 720px;
+      text-wrap: balance;
+    }
+    .copy {
+      color: var(--muted);
+      font-size: clamp(16px, 1.36vw, 21px);
+      line-height: 1.75;
+      max-width: 760px;
+      margin-top: 22px;
+    }
+    .caption {
+      color: var(--dim);
+      font: 700 12px/1.5 var(--pixel);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .hot { color: var(--green); }
+    .cyan { color: var(--cyan); }
+    .amber { color: var(--amber); }
+
+    .glass {
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.07), transparent 30%),
+        linear-gradient(180deg, rgba(55,255,139,.06), transparent),
+        var(--panel);
+      backdrop-filter: blur(18px) saturate(1.35);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.08);
+    }
+    .panel {
+      min-height: 100%;
+      padding: clamp(24px, 3vw, 42px);
+      position: relative;
+      overflow: hidden;
+    }
+    .panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, transparent, rgba(55,255,139,.08), transparent) 0 0 / 100% 1px no-repeat,
+        linear-gradient(180deg, transparent, rgba(0,0,0,.2));
+    }
+    .skew-panel {
+      transform: skewX(-1.6deg);
+    }
+    .skew-panel > * {
+      transform: skewX(1.6deg);
+    }
+
+    .cover {
+      padding-top: 86px;
+      padding-left: clamp(40px, 5vw, 76px);
+      padding-right: clamp(40px, 5vw, 76px);
+      align-items: center;
+      isolation: isolate;
+    }
+    .cover::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(0, 3, 2, .96) 0%, rgba(0, 8, 4, .9) 45%, rgba(0, 8, 4, .75) 68%, rgba(0, 4, 2, .94) 100%),
+        radial-gradient(circle at 28% 38%, rgba(55,255,139,.16), transparent 30%),
+        radial-gradient(circle at 86% 50%, rgba(55,255,139,.1), transparent 24%);
+    }
+    .cover .frame {
+      width: min(1320px, 100%);
+      min-height: 64vh;
+      display: block;
+      position: relative;
+    }
+    .cover .frame::before {
+      content: "";
+      position: absolute;
+      z-index: 0;
+      inset: -28px 22% -28px -26px;
+      border: 1px solid rgba(55,255,139,.14);
+      background:
+        linear-gradient(90deg, rgba(0, 0, 0, .86), rgba(0, 8, 4, .74) 72%, transparent),
+        linear-gradient(180deg, rgba(255,255,255,.035), transparent 38%);
+      box-shadow: 0 32px 100px rgba(0,0,0,.56), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .cover-layout {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(286px, 340px);
+      gap: 50px;
+      align-items: center;
+    }
+    .cover-copy {
+      max-width: 860px;
+    }
+    .cover-mark {
+      position: relative;
+      display: grid;
+      font-size: 6.65rem;
+      line-height: .84;
+      font-family: var(--display);
+      font-weight: 1000;
+      font-style: italic;
+      transform: skewX(-5deg);
+      color: var(--white);
+      white-space: normal;
+    }
+    .cover-mark span {
+      display: block;
+    }
+    .cover-mark span + span {
+      font-size: .72em;
+      margin-top: -.02em;
+    }
+    .cover .wordmark {
+      text-shadow:
+        0 0 10px rgba(55,255,139,.56),
+        0 0 34px rgba(55,255,139,.2),
+        1px 0 rgba(255,76,120,.25),
+        -1px 0 rgba(102,246,255,.2);
+      animation: coverGlitchQuiet 8.4s steps(2) infinite;
+    }
+    .cover-mark::before,
+    .cover-mark::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: .18;
+      mix-blend-mode: screen;
+      display: none;
+    }
+    .cover-mark::before {
+      color: var(--red);
+      transform: translate(1.5px, 0);
+      clip-path: polygon(0 9%, 100% 9%, 100% 16%, 0 16%, 0 60%, 100% 60%, 100% 65%, 0 65%);
+    }
+    .cover-mark::after {
+      color: var(--cyan);
+      transform: translate(-1.5px, 1px);
+      clip-path: polygon(0 31%, 100% 31%, 100% 37%, 0 37%, 0 78%, 100% 78%, 100% 83%, 0 83%);
+    }
+    .cover-signal-strip {
+      margin-top: 30px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      max-width: 820px;
+    }
+    .signal-pill {
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.045), transparent),
+        rgba(0, 10, 5, .74);
+      padding: 14px 16px 15px;
+      font-family: var(--display);
+      box-shadow: 0 16px 38px rgba(0,0,0,.28);
+    }
+    .signal-pill b {
+      display: block;
+      color: var(--green);
+      font-size: 13px;
+      line-height: 1;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .signal-pill span {
+      display: block;
+      color: rgba(238,255,245,.82);
+      font-size: 18px;
+      font-weight: 850;
+      line-height: 1.25;
+    }
+    .vertical-title {
+      position: absolute;
+      z-index: 4;
+      right: clamp(22px, 2.4vw, 38px);
+      top: 22vh;
+      padding: 14px 9px;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      color: var(--white);
+      font: 900 2.75rem/1.02 var(--pixel);
+      background: rgba(0, 5, 3, .76);
+      border: 1px solid rgba(55,255,139,.2);
+      text-shadow:
+        0 0 6px rgba(55,255,139,.42),
+        0 0 14px rgba(55,255,139,.14);
+      animation: evaPop .72s cubic-bezier(.18,.85,.25,1) .2s both;
+    }
+    .cover-kicker {
+      color: var(--green);
+      font: 900 16px/1 var(--display);
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      text-shadow: 0 0 10px rgba(55,255,139,.38);
+    }
+    .cover-line {
+      margin-top: 28px;
+      font: 900 3.1rem/1.08 var(--display);
+      text-shadow: 0 0 12px rgba(255,255,255,.14);
+    }
+    .cover .copy {
+      max-width: 760px;
+      color: rgba(236,255,244,.82);
+      font-family: var(--display);
+      font-weight: 760;
+    }
+    .cover-console {
+      min-height: 380px;
+      padding: 24px;
+      border: 1px solid rgba(55,255,139,.18);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.055), transparent 34%),
+        rgba(0, 8, 4, .82);
+      box-shadow: 0 28px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+      font-family: var(--display);
+    }
+    .cover-console-title {
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+    .cover-stack {
+      display: grid;
+      gap: 14px;
+      margin-top: 24px;
+    }
+    .cover-metric {
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      gap: 14px;
+      align-items: center;
+      padding: 13px 0;
+      border-bottom: 1px solid rgba(55,255,139,.12);
+    }
+    .cover-metric code {
+      color: var(--green);
+      font: 950 14px/1 var(--display);
+    }
+    .cover-metric strong {
+      display: block;
+      color: var(--white);
+      font-size: 19px;
+      line-height: 1.2;
+    }
+    .cover-metric span {
+      display: block;
+      color: rgba(220,255,232,.68);
+      font-size: 13px;
+      line-height: 1.42;
+      margin-top: 4px;
+    }
+    .cover-outcome {
+      margin-top: 24px;
+      padding: 16px;
+      border: 1px solid rgba(55,255,139,.18);
+      background: rgba(55,255,139,.08);
+      color: rgba(246,255,249,.9);
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.35;
+    }
+    .cover .takeaway {
+      background: linear-gradient(90deg, rgba(0,0,0,.64), rgba(0,8,4,.46), transparent);
+      padding: 14px 18px 0;
+    }
+    .cover .takeaway p {
+      font-family: var(--display);
+    }
+    .cover .takeaway b {
+      font-family: var(--display);
+    }
+
+    .section-bomb .title {
+      font-size: clamp(64px, 9vw, 138px);
+      animation: evaPop .76s cubic-bezier(.18,.85,.25,1) both, tremor .78s steps(5) .7s 1;
+    }
+    .section-bomb::after,
+    .white-flash {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 85;
+      background: #fff;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .section-bomb.in-view::after {
+      animation: whiteFlash .72s ease .05s 1;
+    }
+
+    .thesis {
+      display: grid;
+      grid-template-columns: 1fr 96px 1fr;
+      gap: 26px;
+      align-items: stretch;
+    }
+    .thesis-card {
+      padding: 34px;
+      min-height: 460px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+    }
+    .thesis-card h3 {
+      font-size: clamp(42px, 4.7vw, 78px);
+      line-height: .96;
+      font-weight: 1000;
+      transform: skewX(-5deg);
+    }
+    .thesis-card ul {
+      list-style: none;
+      padding: 0;
+      margin: 30px 0 0;
+      display: grid;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+    .not-eq {
+      display: grid;
+      place-items: center;
+      color: var(--amber);
+      font: 1000 58px/1 var(--display);
+      text-shadow: 0 0 18px rgba(255,215,107,.38);
+    }
+
+    .route-stage {
+      position: relative;
+      min-height: 520px;
+      padding: 38px;
+    }
+    .route-path {
+      position: absolute;
+      inset: 46px;
+      pointer-events: none;
+    }
+    .route-line {
+      fill: none;
+      stroke: rgba(55,255,139,.45);
+      stroke-width: 2;
+      stroke-dasharray: 10 10;
+      animation: dash 7s linear infinite;
+    }
+    .route-node {
+      position: absolute;
+      width: min(230px, 24vw);
+      padding: 18px;
+      border: 1px solid rgba(55,255,139,.35);
+      background: rgba(3, 20, 11, .82);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 44px rgba(0,0,0,.4);
+      cursor: pointer;
+      transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease, filter .25s ease;
+    }
+    .route-node:hover {
+      transform: translateY(-4px);
+      border-color: var(--line-hot);
+      box-shadow: 0 18px 60px rgba(0,0,0,.5), 0 0 28px rgba(55,255,139,.16);
+      filter: brightness(1.08);
+    }
+    .route-node b {
+      display: block;
+      color: var(--green);
+      font: 900 14px/1 var(--pixel);
+      letter-spacing: .12em;
+      margin-bottom: 16px;
+    }
+    .route-node h3 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    .route-node p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .node-a { left: 7%; top: 16%; }
+    .node-b { left: 36%; top: 9%; }
+    .node-c { right: 8%; top: 22%; }
+    .node-d { left: 22%; bottom: 12%; }
+    .node-e { right: 18%; bottom: 9%; }
+    .pulse-map {
+      position: absolute;
+      inset: 80px;
+      background-image: radial-gradient(rgba(55,255,139,.32) 1px, transparent 1px);
+      background-size: 18px 18px;
+      opacity: .18;
+      mask-image: radial-gradient(circle at 50% 52%, #000 0, transparent 60%);
+    }
+    .map-marker {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 22px var(--green);
+    }
+    .map-marker::after {
+      content: "";
+      position: absolute;
+      inset: -22px;
+      border-radius: 50%;
+      border: 1px solid rgba(55,255,139,.8);
+      animation: pulse 1.6s ease-out infinite;
+    }
+    .m1 { left: 34%; top: 30%; }
+    .m2 { left: 62%; top: 43%; animation-delay: .4s; }
+    .m3 { left: 48%; top: 68%; animation-delay: .8s; }
+    .spotlight {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 270px;
+      min-height: 126px;
+      translate: -50% -50%;
+      padding: 20px;
+      border: 1px solid rgba(255,215,107,.42);
+      color: var(--white);
+      background: rgba(24, 20, 5, .72);
+      box-shadow: 0 0 36px rgba(255,215,107,.16);
+    }
+
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+    .knowledge-card,
+    .metric-card,
+    .comp-card,
+    .hour-card {
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.05), transparent),
+        rgba(4, 18, 10, .68);
+      padding: 18px;
+      min-height: 150px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+    }
+    .knowledge-card:hover,
+    .metric-card:hover,
+    .comp-card:hover,
+    .hour-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--line-hot);
+      box-shadow: 0 18px 54px rgba(0,0,0,.38), 0 0 30px rgba(55,255,139,.12);
+    }
+    .knowledge-card .num,
+    .hour-card .num {
+      color: var(--green);
+      font: 900 15px/1 var(--pixel);
+      letter-spacing: .12em;
+    }
+    .knowledge-card h3,
+    .comp-card h3,
+    .hour-card h3 {
+      font-size: 24px;
+      line-height: 1.08;
+      margin-top: 18px;
+    }
+    .knowledge-card p,
+    .comp-card p,
+    .hour-card p {
+      color: var(--muted);
+      margin-top: 14px;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .knowledge-card.active {
+      background:
+        radial-gradient(circle at 84% 16%, rgba(55,255,139,.22), transparent 26%),
+        rgba(4, 28, 14, .84);
+    }
+
+    .formula {
+      display: grid;
+      gap: 14px;
+      margin-top: 22px;
+    }
+    .formula code,
+    .terminal code {
+      display: block;
+      border: 1px solid rgba(55,255,139,.2);
+      background: rgba(0,0,0,.34);
+      color: var(--green2);
+      padding: 16px;
+      font: 760 14px/1.7 var(--pixel);
+      white-space: pre-wrap;
+    }
+    .odds-board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 22px;
+    }
+    .metric-card {
+      min-height: 150px;
+    }
+    .dotnum {
+      color: var(--green);
+      font: 900 clamp(38px, 4vw, 62px)/1 var(--pixel);
+      letter-spacing: .06em;
+      text-shadow: 0 0 24px rgba(55,255,139,.55);
+      display: block;
+      margin: 10px 0;
+    }
+    .pixelate {
+      animation: pixelReveal .9s steps(8) both;
+    }
+    .line-move {
+      margin-top: 24px;
+      height: 178px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(rgba(55,255,139,.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(55,255,139,.08) 1px, transparent 1px),
+        rgba(0,0,0,.22);
+      background-size: 40px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .line-move svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .line-move path {
+      fill: none;
+      stroke: var(--green);
+      stroke-width: 4;
+      stroke-linecap: round;
+      filter: drop-shadow(0 0 12px rgba(55,255,139,.8));
+      stroke-dasharray: 720;
+      stroke-dashoffset: 720;
+    }
+    .in-view .line-move path {
+      animation: draw 2.1s cubic-bezier(.2,.8,.2,1) .4s forwards;
+    }
+
+    .workbench {
+      display: grid;
+      grid-template-columns: .86fr 1.1fr .9fr;
+      gap: 14px;
+      min-height: 570px;
+    }
+    .work-col {
+      padding: 18px;
+      min-width: 0;
+    }
+    .work-col h3 {
+      color: var(--green);
+      font: 900 13px/1 var(--pixel);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .team-list,
+    .log-list {
+      display: grid;
+      gap: 8px;
+    }
+    .team-item,
+    .log-line,
+    .pick-line {
+      border: 1px solid rgba(55,255,139,.16);
+      background: rgba(255,255,255,.035);
+      padding: 11px 12px;
+      color: var(--muted);
+      font: 750 13px/1.35 var(--pixel);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .team-item.active,
+    .pick-line.active {
+      color: var(--green);
+      border-color: rgba(55,255,139,.46);
+      box-shadow: 0 0 22px rgba(55,255,139,.1);
+    }
+    .orb-zone {
+      min-height: 250px;
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+    .orb {
+      width: 176px;
+      height: 176px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 38% 30%, rgba(255,255,255,.92), rgba(124,255,176,.35) 18%, transparent 32%),
+        radial-gradient(circle at 62% 68%, rgba(102,246,255,.26), transparent 34%),
+        radial-gradient(circle at 50% 50%, rgba(55,255,139,.9), #062814 72%);
+      box-shadow:
+        inset -22px -30px 48px rgba(0,0,0,.58),
+        inset 12px 12px 36px rgba(255,255,255,.18),
+        0 0 58px rgba(55,255,139,.38),
+        0 30px 70px rgba(0,0,0,.52);
+      transform-style: preserve-3d;
+      animation: breathe 4s ease-in-out infinite;
+      position: relative;
+    }
+    .orb::before,
+    .orb::after {
+      content: "";
+      position: absolute;
+      top: 70px;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #eafff0;
+      box-shadow: 0 0 16px var(--green), 0 0 34px var(--cyan);
+      animation: blink 5s infinite;
+    }
+    .orb::before { left: 55px; }
+    .orb::after { right: 55px; }
+    .orb-ring {
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      border: 1px solid rgba(55,255,139,.26);
+      transform: rotateX(68deg);
+      box-shadow: 0 0 22px rgba(55,255,139,.12);
+      animation: spin 8s linear infinite;
+    }
+    .gm-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .gm-cell {
+      aspect-ratio: 1.18;
+      border: 1px solid rgba(55,255,139,.22);
+      display: grid;
+      place-items: center;
+      color: var(--dim);
+      font: 800 11px/1 var(--pixel);
+      background: rgba(55,255,139,.035);
+    }
+    .gm-cell:nth-child(7n),
+    .gm-cell:nth-child(11n) {
+      color: var(--green);
+      background: rgba(55,255,139,.1);
+      box-shadow: inset 0 0 18px rgba(55,255,139,.11);
+    }
+
+    .coverflow {
+      height: 560px;
+      position: relative;
+      perspective: 1050px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 50% 18%, rgba(55,255,139,.15), transparent 24%),
+        rgba(1, 12, 7, .64);
+    }
+    .flow-card {
+      position: absolute;
+      top: 70px;
+      left: 50%;
+      width: min(370px, 42vw);
+      height: 330px;
+      margin-left: calc(min(370px, 42vw) / -2);
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.06), transparent),
+        rgba(3, 24, 12, .94);
+      padding: 24px;
+      transform-style: preserve-3d;
+      transition: transform .55s cubic-bezier(.2,.8,.2,1), opacity .55s ease, filter .55s ease, box-shadow .55s ease, border-color .55s ease;
+    }
+    .flow-card.active {
+      border-color: rgba(55,255,139,.72);
+      box-shadow: 0 0 40px rgba(55,255,139,.16), 0 28px 70px rgba(0,0,0,.52);
+    }
+    .flow-card h3 {
+      font-size: 34px;
+      line-height: 1.05;
+    }
+    .flow-card p {
+      color: var(--muted);
+      margin-top: 18px;
+      line-height: 1.6;
+    }
+    .flow-card .big {
+      position: absolute;
+      right: 20px;
+      bottom: 18px;
+      color: var(--green);
+      font: 900 60px/1 var(--pixel);
+      text-shadow: 0 0 22px rgba(55,255,139,.55);
+    }
+    .flow-meta {
+      position: absolute;
+      left: 30px;
+      right: 30px;
+      bottom: 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .icon-btn,
+    .action-btn {
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,.3);
+      color: var(--green);
+      cursor: pointer;
+      font: 850 12px/1 var(--pixel);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      transition: transform .12s ease, filter .12s ease, border-color .18s ease, background .18s ease;
+    }
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+    }
+    .action-btn {
+      padding: 14px 16px;
+    }
+    .icon-btn:hover,
+    .action-btn:hover {
+      border-color: var(--line-hot);
+      background: rgba(55,255,139,.1);
+    }
+    button:active,
+    [role="button"]:active,
+    .action-btn:active,
+    .icon-btn:active {
+      transform: translateY(1px) scale(.985);
+      filter: brightness(.92);
+    }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: .92fr 1.08fr;
+      gap: 18px;
+    }
+    .arch-map {
+      min-height: 560px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .arch-layer {
+      border: 1px solid rgba(55,255,139,.22);
+      background: rgba(255,255,255,.035);
+      padding: 16px;
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 14px;
+      align-items: center;
+    }
+    .arch-layer b {
+      color: var(--green);
+      font: 900 13px/1.3 var(--pixel);
+      letter-spacing: .09em;
+    }
+    .service-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .service {
+      border: 1px solid rgba(55,255,139,.18);
+      padding: 8px 10px;
+      color: var(--muted);
+      font: 740 11px/1 var(--pixel);
+      background: rgba(0,0,0,.2);
+    }
+    .service.hot {
+      color: var(--green);
+      border-color: rgba(55,255,139,.45);
+      box-shadow: 0 0 16px rgba(55,255,139,.11);
+    }
+    .comp-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .comp-card {
+      min-height: 180px;
+      background:
+        linear-gradient(0deg, rgba(0,0,0,.82), rgba(0,0,0,.08)),
+        radial-gradient(circle at 20% 20%, rgba(55,255,139,.24), transparent 34%),
+        radial-gradient(circle at 80% 32%, rgba(102,246,255,.12), transparent 28%),
+        rgba(3,17,9,.75);
+    }
+    .comp-card .keyword {
+      color: var(--green);
+      font: 900 12px/1 var(--pixel);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+    .video-stage {
+      min-height: 520px;
+      padding: 18px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+    }
+    .video-stage video {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      object-fit: contain;
+      background: #000;
+      border: 1px solid rgba(55,255,139,.25);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+    }
+    .progress-bar {
+      height: 4px;
+      background: rgba(255,255,255,.12);
+      overflow: hidden;
+    }
+    .progress-bar span {
+      display: block;
+      height: 100%;
+      width: 42%;
+      background: linear-gradient(90deg, var(--green), var(--cyan));
+      box-shadow: 0 0 18px rgba(55,255,139,.66);
+      animation: stageProgress 5s linear infinite;
+    }
+    .prototype {
+      min-height: 520px;
+      padding: 18px;
+    }
+    .prototype iframe {
+      width: 100%;
+      height: 390px;
+      border: 1px solid rgba(55,255,139,.25);
+      background: #020604;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    .hour-card {
+      min-height: 190px;
+    }
+    .effect-table {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 28px;
+    }
+    .effect-pill {
+      border: 1px solid rgba(55,255,139,.2);
+      background: rgba(0,0,0,.25);
+      padding: 12px;
+      color: var(--muted);
+      font: 760 12px/1.45 var(--pixel);
+    }
+    .effect-pill b {
+      color: var(--green);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .final-lock {
+      display: grid;
+      grid-template-columns: 1fr .86fr;
+      gap: 30px;
+      align-items: center;
+    }
+    .board {
+      display: grid;
+      gap: 7px;
+    }
+    .pick-line {
+      align-items: center;
+    }
+    .takeaway {
+      position: absolute;
+      left: clamp(38px, 7vw, 108px);
+      right: clamp(38px, 7vw, 108px);
+      bottom: 94px;
+      border-top: 1px solid rgba(55,255,139,.22);
+      padding-top: 14px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 36px;
+      align-items: baseline;
+      z-index: 4;
+    }
+    .takeaway b {
+      color: var(--green);
+      font: 900 12px/1 var(--pixel);
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+    .takeaway p {
+      color: var(--white);
+      font-size: clamp(16px, 1.45vw, 22px);
+      font-weight: 800;
+    }
+
+    .dock {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      translate: -50% 0;
+      z-index: 70;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 9px;
+      border: 1px solid rgba(55,255,139,.28);
+      background: rgba(2, 12, 7, .72);
+      backdrop-filter: blur(18px) saturate(1.35);
+      box-shadow: 0 18px 60px rgba(0,0,0,.46), 0 0 30px rgba(55,255,139,.1);
+    }
+    .dock button {
+      width: 46px;
+      height: 42px;
+      border: 1px solid transparent;
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      cursor: pointer;
+      font: 900 11px/1 var(--pixel);
+      letter-spacing: .06em;
+      transition: transform .18s ease, background .18s ease, color .18s ease, border-color .18s ease;
+      transform: translate(var(--mx, 0px), var(--my, 0px)) scale(var(--ms, 1));
+    }
+    .dock button.active,
+    .dock button:hover {
+      color: var(--green);
+      border-color: rgba(55,255,139,.35);
+      background: rgba(55,255,139,.1);
+    }
+
+    #ripple-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 120;
+      overflow: hidden;
+    }
+    .ripple {
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      margin: -90px 0 0 -90px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(55,255,139,.4), rgba(55,255,139,.08) 42%, transparent 72%);
+      animation: ripple .62s ease-out forwards;
+    }
+    #wipe {
+      position: fixed;
+      inset: 0;
+      z-index: 110;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(40,255,130,.05), rgba(40,255,130,.76), rgba(102,246,255,.28)),
+        rgba(2,18,9,.8);
+      clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+      opacity: 0;
+    }
+    #wipe.play {
+      animation: wipe .9s cubic-bezier(.7,0,.3,1);
+    }
+    .scene {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at var(--clip-x, 50%) var(--clip-y, 50%), rgba(55,255,139,.28), transparent 30%),
+        rgba(0, 6, 3, .96);
+      clip-path: circle(0% at var(--clip-x, 50%) var(--clip-y, 50%));
+      pointer-events: none;
+      transition: clip-path .7s cubic-bezier(.22,1,.36,1);
+    }
+    .scene.open {
+      clip-path: circle(160% at var(--clip-x, 50%) var(--clip-y, 50%));
+      pointer-events: auto;
+    }
+    .scene-inner {
+      width: min(880px, calc(100vw - 60px));
+      min-height: 470px;
+      padding: 34px;
+      position: relative;
+    }
+    .scene-inner h2 {
+      font-size: clamp(44px, 6vw, 88px);
+      line-height: .9;
+      transform: skewX(-6deg);
+    }
+    .scene-inner p {
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.7;
+    }
+    .close-scene {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+
+    .sr-note {
+      position: fixed;
+      left: -9999px;
+    }
+
+    @keyframes glitchWord {
+      0%, 84%, 100% { transform: skewX(-7deg); filter: none; }
+      86% { transform: skewX(-7deg) translateX(-3px); filter: hue-rotate(18deg); }
+      88% { transform: skewX(-7deg) translateX(3px); }
+      90% { transform: skewX(-7deg) translateX(-1px); }
+    }
+    @keyframes coverGlitchQuiet {
+      0%, 92%, 100% { transform: skewX(-5deg); filter: none; }
+      93% { transform: skewX(-5deg) translateX(-1px); filter: hue-rotate(8deg); }
+      94% { transform: skewX(-5deg) translateX(1px); }
+      95% { transform: skewX(-5deg); filter: none; }
+    }
+    @keyframes evaPop {
+      0% { opacity: 0; transform: scale(1.48) rotate(-1.2deg); filter: blur(16px); }
+      50% { opacity: 1; transform: scale(.92) translateX(-4px) rotate(.2deg); filter: blur(0) hue-rotate(16deg); }
+      64% { transform: scale(1.04) translateX(4px) rotate(-.2deg); }
+      100% { opacity: 1; transform: scale(1) translateX(0) rotate(0); filter: blur(0); }
+    }
+    @keyframes tremor {
+      0%, 100% { translate: 0 0; }
+      20% { translate: -2px 1px; }
+      40% { translate: 2px -1px; }
+      60% { translate: -1px -1px; }
+      80% { translate: 1px 2px; }
+    }
+    @keyframes whiteFlash {
+      0% { opacity: 0; }
+      16% { opacity: .9; }
+      100% { opacity: 0; }
+    }
+    @keyframes dash { to { stroke-dashoffset: -120; } }
+    @keyframes pulse {
+      0% { transform: scale(.25); opacity: .9; }
+      100% { transform: scale(1.7); opacity: 0; }
+    }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    @keyframes pixelReveal {
+      0% { filter: blur(12px) contrast(1.7) saturate(1.8); transform: scale(1.08); opacity: .38; }
+      100% { filter: blur(0) contrast(1) saturate(1); transform: scale(1); opacity: 1; }
+    }
+    @keyframes breathe {
+      0%, 100% { transform: rotateX(0deg) rotateY(-8deg) scale(1); }
+      50% { transform: rotateX(3deg) rotateY(10deg) scale(1.035); }
+    }
+    @keyframes blink {
+      0%, 90%, 100% { transform: scaleY(1); }
+      93% { transform: scaleY(.08); }
+      96% { transform: scaleY(1); }
+    }
+    @keyframes spin { to { rotate: 360deg; } }
+    @keyframes stageProgress {
+      0% { width: 0; }
+      100% { width: 100%; }
+    }
+    @keyframes ripple {
+      from { transform: scale(.08); opacity: .75; }
+      to { transform: scale(1.8); opacity: 0; }
+    }
+    @keyframes wipe {
+      0% { opacity: 0; clip-path: polygon(0 0, 0 0, 0 100%, 0 100%); }
+      12% { opacity: 1; }
+      48% { opacity: 1; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+      100% { opacity: 0; clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%); }
+    }
+
+    @media (max-width: 980px) {
+      .topbar { grid-template-columns: 1fr; gap: 8px; }
+      .status-row { display: none; }
+      .split,
+      .split.equal,
+      .architecture,
+      .demo-grid,
+      .final-lock,
+      .workbench {
+        grid-template-columns: 1fr;
+      }
+      .grid-cards,
+      .odds-board,
+      .timeline,
+      .effect-table {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .cover {
+        padding-top: 104px;
+        align-items: start;
+      }
+      .cover .frame {
+        min-height: auto;
+      }
+      .cover .frame::before {
+        inset: -18px -12px -18px -12px;
+      }
+      .cover-layout {
+        grid-template-columns: 1fr;
+        gap: 22px;
+      }
+      .vertical-title {
+        top: 108px;
+        right: 20px;
+        font-size: 2rem;
+        opacity: .38;
+      }
+      .cover-mark {
+        font-size: 5.2rem;
+        white-space: normal;
+      }
+      .cover-line {
+        font-size: 2.15rem;
+      }
+      .cover-signal-strip {
+        grid-template-columns: 1fr;
+      }
+      .cover-console {
+        min-height: auto;
+      }
+      .slide { padding-left: 24px; padding-right: 24px; }
+      .dock { max-width: calc(100vw - 28px); overflow-x: auto; }
+      .takeaway { grid-template-columns: 1fr; gap: 10px; }
+      .rail { right: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="matrix-bg" aria-hidden="true"></canvas>
+  <canvas id="noise-bg" aria-hidden="true"></canvas>
+  <div class="progress" id="progress"></div>
+  <div class="topbar">
+    <div class="brand-mini">Draft War Room</div>
+    <div class="status-row">
+      <div class="status-chip">GM Agents 30</div>
+      <div class="status-chip">Odds de-vig</div>
+      <div class="status-chip">Monte Carlo 1000</div>
+      <div class="status-chip">Guardrails on</div>
+    </div>
+    <div class="time-chip" id="clock">T-24H / SYSTEM WAKE</div>
+  </div>
+  <nav class="rail" id="rail" aria-label="Slide navigation"></nav>
+
+  <main class="deck" id="deck">
+    <section class="slide cover" id="s-cover" data-label="BOOT">
+      <div class="vertical-title">选秀作战室</div>
+      <div class="frame">
+        <div class="cover-layout">
+          <div class="cover-copy">
+            <div class="cover-kicker cascade">T00 + SYSTEM WAKE / AWS SUMMIT SHANGHAI</div>
+            <h1 class="cover-mark wordmark cascade d1" data-text="QUANTDRAFT 30"><span>QUANTDRAFT</span><span>30</span></h1>
+            <div class="cover-line cascade d2">把分歧变成 alpha</div>
+            <p class="copy cascade d3">不是训练一个单边预测模型,而是搭一座 30 位独立人格 GM 的选秀作战室。数据、专家、资金三路信号互相校验,每个顺位输出概率、解释和审计记录。</p>
+            <div class="cover-signal-strip cascade d4">
+              <div class="signal-pill"><b>Signal 01</b><span>天赋数据</span></div>
+              <div class="signal-pill"><b>Signal 02</b><span>专家共识</span></div>
+              <div class="signal-pill"><b>Signal 03</b><span>资金赔率</span></div>
+            </div>
+          </div>
+          <aside class="cover-console cascade d3" aria-label="QuantDraft core idea">
+            <div class="cover-console-title">Core Route</div>
+            <div class="cover-stack">
+              <div class="cover-metric">
+                <code>01</code>
+                <div><strong>找背离</strong><span>天赋、mock、赔率不一致时,才是 alpha 入口。</span></div>
+              </div>
+              <div class="cover-metric">
+                <code>02</code>
+                <div><strong>30 GM 推演</strong><span>每队带需求、风险偏好和选人 DNA 独立决策。</span></div>
+              </div>
+              <div class="cover-metric">
+                <code>03</code>
+                <div><strong>概率化输出</strong><span>最终不是硬榜单,而是顺位置信度和可审计理由。</span></div>
+              </div>
+            </div>
+            <div class="cover-outcome">重点: 用三路信号的分歧,预测“谁会被选”。</div>
+          </aside>
+        </div>
+      </div>
+      <div class="takeaway"><b>Takeaway</b><p>清楚讲一件事: 分歧不是噪声,是选秀顺位预测里的 alpha。</p></div>
+    </section>
+
+    <section class="slide section-bomb" id="s-thesis" data-label="WHY">
+      <div class="frame wide split">
+        <div class="panel glass skew-panel cascade">
+          <div class="eyebrow">01 / Core Contradiction</div>
+          <h2 class="title glitch">天赋不等于顺位</h2>
+          <p class="subtitle">真正值钱的不是单边预测,而是数据、专家和资金之间的背离。</p>
+          <p class="copy">多数队会陷入“猜整张名单”的幻觉。我们把可控的代码质量与路演逻辑打满,再用三路信号寻找区分度最高的难点。</p>
+        </div>
+        <div class="thesis cascade d2">
+          <div class="thesis-card glass">
+            <h3>谁更强?</h3>
+            <ul>
+              <li>速率指标</li>
+              <li>高阶数据</li>
+              <li>年龄修正</li>
+              <li>位置 Z-score</li>
+            </ul>
+          </div>
+          <div class="not-eq">≠</div>
+          <div class="thesis-card glass">
+            <h3>谁会被选?</h3>
+            <ul>
+              <li>球队需求</li>
+              <li>mock 共识</li>
+              <li>赔率隐含概率</li>
+              <li>实时情报</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway"><b>Takeaway</b><p>分歧不是噪声,是选秀预测里最值得深挖的信号。</p></div>
+    </section>
+
+    <section class="slide" id="s-route" data-label="SIGNAL">
+      <div class="frame wide split">
+        <div class="panel glass skew-panel cascade">
+          <div class="eyebrow">02 / Signal Route</div>
+          <h2 class="title">三信号融合,两轴背离</h2>
+          <p class="subtitle">天赋、专家、资金三方一致就锁定;不一致就触发 Agent 深推理。</p>
+          <p class="copy">点击右侧任意节点,会用 FLIP 连续物体转场把它拉到中心解释位。这里演示“同一个概念被带到下一层”的过渡。</p>
+          <button class="action-btn scene-trigger" data-scene="signal">启动背离分析</button>
+        </div>
+        <div class="route-stage glass cascade d2">
+          <div class="pulse-map"></div>
+          <span class="map-marker m1"></span>
+          <span class="map-marker m2"></span>
+          <span class="map-marker m3"></span>
+          <svg class="route-path" viewBox="0 0 700 440" preserveAspectRatio="none">
+            <path class="route-line" d="M80,96 C190,24 300,80 375,128 S575,135 615,230 S480,412 330,360 S185,292 245,220" />
+          </svg>
+          <div class="route-node node-a" data-copy="天赋层: 速率指标、体测、年龄修正、位置 Z-score,负责回答谁更强。"><b>01</b><h3>Talent</h3><p>数据根基 / Big Board</p></div>
+          <div class="route-node node-b" data-copy="专家层: 多家 mock 按历史命中率和更新时间加权,形成全榜锚点。"><b>02</b><h3>Mock</h3><p>专家共识 / 全榜锚</p></div>
+          <div class="route-node node-c" data-copy="资金层: 赔率转隐含概率并 de-vig,顶部顺位最锐利,线移动代表情报速度。"><b>03</b><h3>Money</h3><p>赔率 / 线移动</p></div>
+          <div class="route-node node-d" data-copy="GM 层: 30 队独立人格,带需求、时间线、风险偏好和选人 DNA。"><b>04</b><h3>30 GM</h3><p>球队博弈 / 决策 DNA</p></div>
+          <div class="route-node node-e" data-copy="蒙特卡洛: 1000 次序贯模拟,每个顺位输出边际概率和置信度。"><b>05</b><h3>Monte Carlo</h3><p>概率化 / 可校准</p></div>
+          <div class="spotlight" id="spotlight"><b class="hot">FLIP TARGET</b><p class="copy" style="margin-top:10px;font-size:15px;">点击路线节点查看该信号怎样进入作战室。</p></div>
+        </div>
+      </div>
+      <div class="takeaway"><b>Takeaway</b><p>一致锁定,背离深挖;钱是最快情报,但只在权威区重用。</p></div>
+    </section>
+
+    <section class="slide" id="s-knowledge" data-label="BASE">
+      <div class="frame wide">
+        <div class="eyebrow cascade">03 / Five-Layer Knowledge Base</div>
+        <h2 class="title cascade d1">五层知识底座</h2>
+        <p class="subtitle cascade d2">数字进 DynamoDB,散文进 Bedrock KB。结构化和非结构化分开,评委才会觉得像老炮。</p>
+        <div class="grid-cards cascade d3">
+          <article class="knowledge-card active"><span class="num">01</span><h3>球员层</h3><p>指标百科、转化率、位置基准、2026 评分。</p></article>
+          <article class="knowledge-card"><span class="num">02</span><h3>球队层</h3><p>30 队顺位、阵容缺口、GM 人格、时间线。</p></article>
+          <article class="knowledge-card"><span class="num">03A</span><h3>专家层</h3><p>ESPN/CBS/Ringer/Tankathon 等 mock 加权。</p></article>
+          <article class="knowledge-card active"><span class="num">03B</span><h3>资金层</h3><p>赔率转隐含概率,de-vig 后进入融合引擎。</p></article>
+          <article class="knowledge-card"><span class="num">05</span><h3>实时层</h3><p>试训、交易传闻、伤病、线移动触发重跑。</p></article>
+        </div>
+      </div>
+      <div class="takeaway"><b>Takeaway</b><p>这页用玻璃控制台 + 卡片悬浮微动 + 内容级联入场,让底座不只是列表。</p></div>
+    </section>
+
+    <section class="slide" id="s-odds" data-label="ODDS">
+      <div class="frame wide split">
+        <div class="panel glass cascade">
+          <div class="eyebrow">04 / Odds Agent</div>
+          <h2 class="title">资金信号处理</h2>
+          <p class="subtitle">赔率不是下注建议,而是公开市场的隐含概率。</p>
+          <div class="formula">
+            <code>-X → X / (X + 100)
++X → 100 / (X + 100)
+p_i = q_i / Σq_j  // de-vig</code>
+            <code>顶部 1-4: money signal as anchor
+5-9: money + mock
+10-30: mock + talent + intel</code>
+          </div>
+        </div>
+        <div class="panel glass cascade d2">
+          <div class="caption">Line Movement / Pixel Reveal</div>
+          <div class="odds-board">
+            <div class="metric-card"><span class="caption">Dybantsa #1</span><span class="dotnum pixel-watch">84%</span><p class="copy" style="font-size:14px;margin-top:0;">-550 raw implied</p></div>
+            <div class="metric-card"><span class="caption">Peterson</span><span class="dotnum pixel-watch">26%</span><p class="copy" style="font-size:14px;margin-top:0;">Shams 后异动</p></div>
+            <div class="metric-card"><span class="caption">Overround</span><span class="dotnum pixel-watch">117</span><p class="copy" style="font-size:14px;margin-top:0;">去水前概率和</p></div>
+            <div class="metric-card"><span class="caption">De-vig</span><span class="dotnum pixel-watch">ON</span><p class="copy" style="font-size:14px;margin-top:0;">可融合概率</p></div>
+          </div>
+          <div class="line-move">
+            <svg viewBox="0 0 700 180" preserveAspectRatio="none">
+              <path d="M25 136 C110 130 135 112 190 116 S285 128 338 90 S440 48 520 55 S625 35 676 22" />
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway"><b>Takeaway</b><p>像素显影用在关键数字变化,线移动用来展示“钱比 mock 更快”。</p></div>
+    </section>
+
+    <section class="slide" id="s-gm" data-label="GM30">
+      <div class="frame wide">
+        <div class="eyebrow cascade">05 / Live War Room</div>
+        <h2 class="title cascade d1">30 位 GM 推演上千次</h2>
+        <div class="workbench cascade d2">
+          <div class="work-col glass">
+            <h3>Team Dossier</h3>
+            <div class="team-list">
+              <div class="team-item active"><span>WAS</span><b>Pick 01</b></div>
+              <div class="team-item"><span>UTA</span><b>Pick 02</b></div>
+              <div class="team-item"><span>MEM</span><b>Pick 03</b></div>
+              <div class="team-item"><span>CHI</span><b>Pick 04</b></div>
+              <div class="team-item"><span>LAC</span><b>Pick 05</b></div>
+              <div class="team-item"><span>BKN</span><b>Pick 06</b></div>
+              <div class="team-item"><span>NOP</span><b>Pick 07</b></div>
+            </div>
+          </div>
+          <div class="work-col glass">
+            <h3>Commissioner Agent</h3>
+            <div class="orb-zone">
+              <div class="orb-ring"></div>
+              <div class="orb" id="orb"></div>
+            </div>
+            <div class="gm-grid" aria-label="30 GM grid">
+              <span class="gm-cell">GM01</span><span class="gm-cell">GM02</span><span class="gm-cell">GM03</span><span class="gm-cell">GM04</span><span class="gm-cell">GM05</span>
+              <span class="gm-cell">GM06</span><span class="gm-cell">GM07</span><span class="gm-cell">GM08</span><span class="gm-cell">GM09</span><span class="gm-cell">GM10</span>
+              <span class="gm-cell">GM11</span><span class="gm-cell">GM12</span><span class="gm-cell">GM13</span><span class="gm-cell">GM14</span><span class="gm-cell">GM15</span>
+              <span class="gm-cell">GM16</span><span class="gm-cell">GM17</span><span class="gm-cell">GM18</span><span class="gm-cell">GM19</span><span class="gm-cell">GM20</span>
+              <span class="gm-cell">GM21</span><span class="gm-cell">GM22</span><span class="gm-cell">GM23</span><span class="gm-cell">GM24</span><span class="gm-cell">GM25</span>
+              <span class="gm-cell">GM26</span><span class="gm-cell">GM27</span><span class="gm-cell">GM28</span><span class="gm-cell">GM29</span><span class="gm-cell">GM30</span>
+            </div>
+          </div>
+          <div class="work-col glass">
+            <h3>Audit Trace</h3>
+            <div class="log-list">
+              <div class="log-line"><span>commissioner.route</span><b class="hot">OK</b></div>
+              <div class="log-line"><span>inline.agent.inject</span><b>30</b></div>
+              <div class="log-line"><span>payload.reference</span><b>ON</b></div>
+              <div class="log-line"><span>red.team.challenge</span><b class="amber">RUN</b></div>
+              <div class="log-line"><span>confidence.calibrate</span><b class="hot">63%</b></div>
+            </div>
+            <button class="action-btn scene-trigger" data-scene="redteam" style="margin-top:18px;">Run Red Team</button>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway"><b>Takeaway</b><p>三栏工作区负责“左选、中看、右改”;3D 情绪球把 Commissioner 变成有记忆点的主对象。</p></div>
+    </section>
+
+    <section class="slide" id="s-monte" data-label="SIM">
+      <div class="frame wide split">
+        <div class="panel glass cascade">
+          <div class="eyebrow">06 / Monte Carlo Browser</div>
+          <h2 class="title">不是一张榜,是一条作战链</h2>
+          <p class="subtitle">CoverFlow 把 LLM-once、偏好函数、1000 次采样、匈牙利指派和置信度串成可讲的过程。</p>
+          <div class="odds-board">
+            <div class="metric-card"><span class="caption">Runs</span><span class="dotnum">1000</span></div>
+            <div class="metric-card"><span class="caption">Top Anchor</span><span class="dotnum">ODDS</span></div>
+            <div class="metric-card"><span class="caption">LLM Calls</span><span class="dotnum">1X</span></div>
+            <div class="metric-card"><span class="caption">Output</span><span class="dotnum">P%</span></div>
+          </div>
+        </div>
+        <div class="coverflow glass cascade d2" id="coverflow">
+          <article class="flow-card" data-flow-card="0"><h3>LLM-once</h3><p>多智能体层只跑一次,产出球队偏好函数,避免 1000 次都烧模型。</p><div class="big">01</div></article>
+          <article class="flow-card" data-flow-card="1"><h3>Softmax Sample</h3><p>每个顺位按偏好函数和可用球员采样,前段低温、后段高方差。</p><div class="big">02</div></article>
+          <article class="flow-card" data-flow-card="2"><h3>Odds Anchor</h3><p>存在盘口的顶部顺位,直接用 de-vig 后概率作采样锚。</p><div class="big">03</div></article>
+          <article class="flow-card" data-flow-card="3"><h3>Hungarian</h3><p>最后用指派优化保证球员不重复,并最大化全榜期望得分。</p><div class="big">04</div></article>
+          <article class="flow-card" data-flow-card="4"><h3>Confidence</h3><p>每个顺位输出边际概率,不是只给一个硬答案。</p><div class="big">05</div></article>
+          <div class="flow-meta"><button class="icon-btn" data-flow-prev aria-label="上一个">‹</button><span id="flowLabel">Process / 01</span><button class="icon-btn" data-flow-next aria-label="下一个">›</button></div>
+        </div>
+      </div>
+      <div class="takeaway"><b>Takeaway</b><p>CoverFlow 不当图库,只用来展示过程叙事。</p></div>
+    </section>
+
+    <section class="slide" id="s-aws" data-label="AWS">
+      <div class="frame wide architecture">
+        <div class="arch-map glass cascade">
+          <div class="eyebrow">07 / AWS Native Architecture</div>
+          <h2 class="title" style="font-size:clamp(42px,5vw,82px);">容器 + Serverless + Agent</h2>
+          <p class="copy">这页故意像“工程评委看的图”: 服务不是堆名词,而是按采集、知识、Agent、模拟、交付分层。</p>
+        </div>
+        <div class="panel glass cascade d2">
+          <div class="arch-layer"><b>采集容器</b><div class="service-row"><span class="service hot">Fargate</span><span class="service">ECR</span><span class="service">EventBridge</span><span class="service">Playwright</span></div></div>
+          <div class="arch-layer"><b>知识底座</b><div class="service-row"><span class="service hot">DynamoDB</span><span class="service">S3</span><span class="service">Bedrock KB</span><span class="service">OpenSearch optional</span></div></div>
+          <div class="arch-layer"><b>多智能体</b><div class="service-row"><span class="service hot">Bedrock Supervisor</span><span class="service hot">Inline Agents</span><span class="service">Guardrails</span><span class="service">Payload Ref</span></div></div>
+          <div class="arch-layer"><b>模拟引擎</b><div class="service-row"><span class="service hot">Step Functions</span><span class="service">Distributed Map</span><span class="service">Lambda</span><span class="service">Hungarian</span></div></div>
+          <div class="arch-layer"><b>交付安全</b><div class="service-row"><span class="service">API Gateway</span><span class="service">KMS</span><span class="service">Secrets Manager</span><span class="service hot">CloudWatch/X-Ray</span></div></div>
+          <div class="comp-grid" style="margin-top:18px;">
+            <article class="comp-card"><span class="keyword">Against generic ML</span><h3>不是只预测谁强</h3><p>天赋只是底座,真正预测顺位要补专家、资金、球队和实时情报。</p></article>
+            <article class="comp-card"><span class="keyword">Against mock copy</span><h3>不是复述榜单</h3><p>mock 与 odds 背离时,触发 Agent 深推理与红队挑战。</p></article>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway"><b>Takeaway</b><p>竞品图卡在这里被改成“反模板对比卡”: 少图,但保留关键词压底和卡片动效。</p></div>
+    </section>
+
+    <section class="slide" id="s-demo" data-label="DEMO">
+      <div class="frame wide demo-grid">
+        <div class="video-stage glass cascade">
+          <div class="eyebrow">08 / Video Stage</div>
+          <video src="EVA_Matrix_故障字标融合试验_5秒.mp4" muted playsinline loop controls></video>
+          <div class="progress-bar"><span></span></div>
+        </div>
+        <div class="prototype glass cascade d2">
+          <div class="eyebrow">Interactive Prototype Embed</div>
+          <iframe title="war room prototype" srcdoc='
+            <style>
+              body{margin:0;background:#020604;color:#f3fff7;font-family:Menlo,monospace;overflow:hidden}
+              .wrap{padding:18px;height:100vh;background:radial-gradient(circle at 80% 10%,rgba(40,255,130,.18),transparent 34%)}
+              h1{font:900 28px/1 sans-serif;margin:0 0 14px;color:#fff;text-shadow:0 0 16px #28ff82}
+              .row{display:grid;grid-template-columns:40px 1fr 62px;gap:8px;margin:7px 0;padding:9px;border:1px solid rgba(40,255,130,.28);background:rgba(40,255,130,.04)}
+              b{color:#28ff82}.log{margin-top:16px;color:#9cffc4;font-size:12px;line-height:1.6}
+              button{border:1px solid rgba(40,255,130,.5);background:#061b0d;color:#28ff82;padding:10px 12px;font-weight:900}
+            </style>
+            <div class="wrap">
+              <h1>Pick Confidence Console</h1>
+              <div class="row"><b>01</b><span>WAS · Player A</span><b>LOCK</b></div>
+              <div class="row"><b>02</b><span>UTA · Player B</span><b>78%</b></div>
+              <div class="row"><b>03</b><span>MEM · Player C</span><b>71%</b></div>
+              <div class="row"><b>04</b><span>CHI · Player D</span><b>63%</b></div>
+              <button onclick="document.querySelector(&apos;.log&apos;).textContent=&apos;red_team.challenge -> market gap reviewed -> confidence updated&apos;">RUN TRACE</button>
+              <div class="log">commissioner.trace -> waiting</div>
+            </div>'></iframe>
+          <p class="copy">这页同时用“视频展示容器”和“交互原型嵌入”。现场可以先放 5 秒气质视频,再切到可点的微型作战室。</p>
+          <button class="action-btn scene-trigger" data-scene="prototype">全屏接管演示</button>
+        </div>
+      </div>
+      <div class="takeaway"><b>Takeaway</b><p>演示页必须有真实可播放/可点击对象,否则再漂亮也像空壳。</p></div>
+    </section>
+
+    <section class="slide" id="s-timeline" data-label="24H">
+      <div class="frame wide">
+        <div class="eyebrow cascade">09 / 24H Execution</div>
+        <h2 class="title cascade d1">24 小时作战表</h2>
+        <p class="subtitle cascade d2">用全屏 Wipe 和圆形 Clip 去表现“系统进入阶段”,但页面主体仍是清楚的任务安排。</p>
+        <div class="timeline cascade d3">
+          <article class="hour-card"><span class="num">09-13</span><h3>立地基</h3><p>CDK/S3/DynamoDB/Fargate 爬虫/客观题清单。</p></article>
+          <article class="hour-card"><span class="num">13-19</span><h3>三引擎 + 30 GM</h3><p>天赋、专家、赔率聚合,Inline Agents 注入人格。</p></article>
+          <article class="hour-card"><span class="num">19-01</span><h3>模拟 + 红队</h3><p>1000 次 Monte Carlo,红队挑战,赔率答里程碑。</p></article>
+          <article class="hour-card"><span class="num">06-07:30</span><h3>锁定前重跑</h3><p>最新 mock、赔率、线移动、传闻刷新后最终提交。</p></article>
+        </div>
+        <div class="effect-table cascade d4">
+          <div class="effect-pill"><b>按压下沉</b>所有按钮/chip/Dock</div>
+          <div class="effect-pill"><b>触摸涟漪</b>全局点击反馈</div>
+          <div class="effect-pill"><b>Dock 磁吸</b>底部导航</div>
+          <div class="effect-pill"><b>场景接管</b>背离/红队/原型演示</div>
+          <div class="effect-pill"><b>圆形 Clip</b>从点击点打开接管层</div>
+          <div class="effect-pill"><b>全屏 Wipe</b>页面跳转时扫屏</div>
+          <div class="effect-pill"><b>卡片悬浮</b>底座/时间线/竞品卡</div>
+          <div class="effect-pill"><b>性能降级</b>WebGL 失败自动静态背景</div>
+        </div>
+      </div>
+      <div class="takeaway"><b>Takeaway</b><p>这页是“效果装配表”,方便你挑哪些留下、哪些删掉。</p></div>
+    </section>
+
+    <section class="slide" id="s-final" data-label="LOCK">
+      <div class="frame wide final-lock">
+        <div class="cascade">
+          <div class="eyebrow">10 / Final Lock</div>
+          <h2 class="title glitch">敢标置信度,敢展示思考</h2>
+          <p class="subtitle">我们不追求整张名单全对。我们为每个顺位的期望得分优化,并把每个判断留在作战室记录里。</p>
+          <button class="action-btn scene-trigger" data-scene="final">Submit Final Board</button>
+        </div>
+        <div class="panel glass cascade d2">
+          <div class="caption">Draft Board Preview</div>
+          <div class="board" style="margin-top:18px;">
+            <div class="pick-line active"><b>01</b><span>WAS · Dybantsa</span><b>LOCK</b></div>
+            <div class="pick-line"><b>02</b><span>UTA · Peterson</span><b>78%</b></div>
+            <div class="pick-line"><b>03</b><span>MEM · Boozer</span><b>71%</b></div>
+            <div class="pick-line"><b>04</b><span>CHI · Wilson</span><b>63%</b></div>
+            <div class="pick-line"><b>05</b><span>LAC · Wagler</span><b>58%</b></div>
+            <div class="pick-line"><b>06</b><span>BKN · Brown</span><b>52%</b></div>
+            <div class="pick-line"><b>07</b><span>NOP · Acuff</span><b>49%</b></div>
+            <div class="pick-line"><b>08</b><span>SAS · Player H</span><b>44%</b></div>
+          </div>
+          <div class="terminal" style="margin-top:20px;">
+            <code>commissioner.finalize
+-> odds_anchor verified
+-> red_team objections logged
+-> confidence board exported
+-> milestone props answered</code>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway"><b>Takeaway</b><p>最后回到一句话: 数据、专家、资金三方的分歧,就是 alpha。</p></div>
+    </section>
+  </main>
+
+  <nav class="dock" id="dock" aria-label="Bottom dock navigation">
+    <button data-target="s-cover">BOOT</button>
+    <button data-target="s-thesis">WHY</button>
+    <button data-target="s-route">SIG</button>
+    <button data-target="s-knowledge">BASE</button>
+    <button data-target="s-odds">ODDS</button>
+    <button data-target="s-gm">GM</button>
+    <button data-target="s-monte">SIM</button>
+    <button data-target="s-aws">AWS</button>
+    <button data-target="s-demo">DEMO</button>
+    <button data-target="s-timeline">24H</button>
+    <button data-target="s-final">LOCK</button>
+  </nav>
+
+  <div id="wipe"></div>
+  <div id="ripple-layer"></div>
+  <div class="scene" id="scene">
+    <div class="scene-inner glass">
+      <button class="icon-btn close-scene" id="closeScene" aria-label="关闭">×</button>
+      <div class="eyebrow" id="sceneKicker">Scene Takeover</div>
+      <h2 id="sceneTitle">系统接管</h2>
+      <p id="sceneBody">场景接管层用于重大状态、红队挑战、演示模式和最终提交。它必须能退出,不能当普通弹窗滥用。</p>
+      <div class="terminal" style="margin-top:26px;"><code id="sceneCode">trace.open -> waiting</code></div>
+    </div>
+  </div>
+
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    const rail = document.getElementById("rail");
+    const dock = document.getElementById("dock");
+    const progress = document.getElementById("progress");
+    const wipe = document.getElementById("wipe");
+    const clock = document.getElementById("clock");
+    const scene = document.getElementById("scene");
+    const closeScene = document.getElementById("closeScene");
+    const sceneTitle = document.getElementById("sceneTitle");
+    const sceneBody = document.getElementById("sceneBody");
+    const sceneCode = document.getElementById("sceneCode");
+    const sceneKicker = document.getElementById("sceneKicker");
+
+    rail.innerHTML = slides.map((slide, i) => `<button data-target="${slide.id}" aria-label="跳到第 ${i + 1} 页"></button>`).join("");
+
+    function goTo(id) {
+      const target = document.getElementById(id);
+      if (!target) return;
+      wipe.classList.remove("play");
+      void wipe.offsetWidth;
+      wipe.classList.add("play");
+      setTimeout(() => target.scrollIntoView({ behavior: "smooth" }), 120);
+    }
+
+    [...document.querySelectorAll("[data-target]")].forEach(btn => {
+      btn.addEventListener("click", () => goTo(btn.dataset.target));
+    });
+
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("in-view");
+          const index = slides.indexOf(entry.target);
+          document.querySelectorAll(".rail button").forEach((b, i) => b.classList.toggle("active", i === index));
+          document.querySelectorAll(".dock button").forEach(b => b.classList.toggle("active", b.dataset.target === entry.target.id));
+        }
+      });
+    }, { threshold: .55 });
+    slides.forEach(slide => observer.observe(slide));
+
+    window.addEventListener("scroll", () => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      progress.style.width = `${Math.min(100, Math.max(0, scrollY / max * 100))}%`;
+    }, { passive: true });
+
+    document.addEventListener("keydown", event => {
+      const activeIndex = slides.findIndex(slide => {
+        const rect = slide.getBoundingClientRect();
+        return rect.top <= innerHeight * .55 && rect.bottom >= innerHeight * .55;
+      });
+      let next = activeIndex < 0 ? 0 : activeIndex;
+      if (["ArrowDown", "PageDown", " "].includes(event.key)) next = Math.min(slides.length - 1, activeIndex + 1);
+      if (["ArrowUp", "PageUp"].includes(event.key)) next = Math.max(0, activeIndex - 1);
+      if (event.key === "Home") next = 0;
+      if (event.key === "End") next = slides.length - 1;
+      if (event.key === "Escape") closeSceneLayer();
+      if (next !== activeIndex && slides[next]) {
+        event.preventDefault();
+        goTo(slides[next].id);
+      }
+    });
+
+    setInterval(() => {
+      const now = new Date();
+      clock.textContent = `T-24H / ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+    }, 1000);
+
+    document.addEventListener("click", event => {
+      if (event.target.closest("input, textarea, select")) return;
+      const ripple = document.createElement("span");
+      ripple.className = "ripple";
+      ripple.style.left = `${event.clientX}px`;
+      ripple.style.top = `${event.clientY}px`;
+      document.getElementById("ripple-layer").appendChild(ripple);
+      setTimeout(() => ripple.remove(), 650);
+    });
+
+    dock.addEventListener("pointermove", event => {
+      [...dock.querySelectorAll("button")].forEach(btn => {
+        const rect = btn.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = event.clientX - cx;
+        const dy = event.clientY - cy;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 82) {
+          const pull = (1 - dist / 82) * .32;
+          btn.style.setProperty("--mx", `${dx * pull}px`);
+          btn.style.setProperty("--my", `${dy * pull}px`);
+          btn.style.setProperty("--ms", `${1 + (1 - dist / 82) * .08}`);
+        } else {
+          btn.style.setProperty("--mx", "0px");
+          btn.style.setProperty("--my", "0px");
+          btn.style.setProperty("--ms", "1");
+        }
+      });
+    });
+    dock.addEventListener("pointerleave", () => {
+      dock.querySelectorAll("button").forEach(btn => {
+        btn.style.setProperty("--mx", "0px");
+        btn.style.setProperty("--my", "0px");
+        btn.style.setProperty("--ms", "1");
+      });
+    });
+
+    function openSceneLayer(kind, event) {
+      const x = event ? `${event.clientX / innerWidth * 100}%` : "50%";
+      const y = event ? `${event.clientY / innerHeight * 100}%` : "50%";
+      scene.style.setProperty("--clip-x", x);
+      scene.style.setProperty("--clip-y", y);
+      const copy = {
+        signal: {
+          k: "Two-Axis Divergence",
+          t: "背离分析接管",
+          b: "轴一看天赋 vs 市场,轴二看专家 vs 资金。三方一致锁定;出现背离时,Scout Agent、Odds Agent、Intel Agent 和 Red Team 一起重算理由。",
+          c: "axis1 = |rank_talent - rank_market|\\naxis2 = |implied_mock - implied_odds|\\nif divergence: trigger_deep_reasoning()"
+        },
+        redteam: {
+          k: "Red Team Challenge",
+          t: "红队开始挑战",
+          b: "红队不是装饰,它专门问: 这是不是过拟合? 有没有忽略伤病? mock 和赔率是不是群体思维? 每个反驳都进入作战室记录。",
+          c: "red_team.challenge(slot=04)\\n-> overfitting box score?\\n-> line movement verified\\n-> confidence recalibrated"
+        },
+        prototype: {
+          k: "Prototype Takeover",
+          t: "进入全屏演示模式",
+          b: "交互原型不能缩成小卡片。现场演示时可以让作战室接管屏幕,只保留一个操作目标和一条 trace。",
+          c: "prototype.focus()\\niframe.blur_on_leave = true\\ninteraction.feedback = ripple + press + toast"
+        },
+        final: {
+          k: "Final Board Lock",
+          t: "最终名单锁定",
+          b: "提交前最后一次扫描 mock、赔率、线移动和传闻,重跑模拟,输出名单、置信度、客观题答案和审计记录。",
+          c: "06:00 intel_scan\\n06:30 odds_refresh\\n07:05 monte_carlo.run(1000)\\n07:30 submit_board"
+        }
+      }[kind] || {};
+      sceneKicker.textContent = copy.k || "Scene Takeover";
+      sceneTitle.textContent = copy.t || "系统接管";
+      sceneBody.textContent = copy.b || "场景接管层用于重大状态。";
+      sceneCode.textContent = copy.c || "trace.open -> ok";
+      scene.classList.add("open");
+    }
+    function closeSceneLayer() {
+      scene.classList.remove("open");
+    }
+    document.querySelectorAll(".scene-trigger").forEach(btn => {
+      btn.addEventListener("click", event => openSceneLayer(btn.dataset.scene, event));
+    });
+    closeScene.addEventListener("click", closeSceneLayer);
+
+    document.querySelectorAll(".route-node").forEach(node => {
+      node.addEventListener("click", () => {
+        const target = document.getElementById("spotlight");
+        const first = node.getBoundingClientRect();
+        const clone = node.cloneNode(true);
+        clone.style.position = "fixed";
+        clone.style.left = `${first.left}px`;
+        clone.style.top = `${first.top}px`;
+        clone.style.width = `${first.width}px`;
+        clone.style.height = `${first.height}px`;
+        clone.style.margin = "0";
+        clone.style.zIndex = 130;
+        clone.style.pointerEvents = "none";
+        document.body.appendChild(clone);
+        target.innerHTML = `<b class="hot">SELECTED SIGNAL</b><p class="copy" style="margin-top:10px;font-size:15px;">${node.dataset.copy}</p>`;
+        const last = target.getBoundingClientRect();
+        clone.animate([
+          { transform: "translate(0, 0) scale(1)", opacity: 1 },
+          { transform: `translate(${last.left - first.left}px, ${last.top - first.top}px) scale(${last.width / first.width})`, opacity: .08 }
+        ], { duration: 520, easing: "cubic-bezier(.2,.8,.2,1)" }).onfinish = () => clone.remove();
+      });
+    });
+
+    let flowIndex = 0;
+    const flowCards = [...document.querySelectorAll("[data-flow-card]")];
+    const flowLabel = document.getElementById("flowLabel");
+    function updateFlow() {
+      flowCards.forEach((card, i) => {
+        let d = i - flowIndex;
+        if (d > 2) d -= flowCards.length;
+        if (d < -2) d += flowCards.length;
+        const hidden = Math.abs(d) > 2;
+        card.classList.toggle("active", d === 0);
+        card.style.opacity = hidden ? "0" : String(1 - Math.abs(d) * .18);
+        card.style.filter = hidden ? "brightness(.35)" : `brightness(${1 - Math.abs(d) * .14})`;
+        card.style.transform = `translateX(${d * 198}px) translateZ(${-Math.abs(d) * 120}px) rotateY(${d * -42}deg) scale(${1 - Math.abs(d) * .055})`;
+        card.style.zIndex = String(10 - Math.abs(d));
+      });
+      flowLabel.textContent = `Process / ${String(flowIndex + 1).padStart(2, "0")}`;
+    }
+    document.querySelector("[data-flow-prev]").addEventListener("click", () => {
+      flowIndex = (flowIndex - 1 + flowCards.length) % flowCards.length;
+      updateFlow();
+    });
+    document.querySelector("[data-flow-next]").addEventListener("click", () => {
+      flowIndex = (flowIndex + 1) % flowCards.length;
+      updateFlow();
+    });
+    updateFlow();
+
+    const pixelObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.remove("pixelate");
+          void entry.target.offsetWidth;
+          entry.target.classList.add("pixelate");
+        }
+      });
+    }, { threshold: .6 });
+    document.querySelectorAll(".pixel-watch").forEach(el => pixelObserver.observe(el));
+
+    const matrixCanvas = document.getElementById("matrix-bg");
+    const matrixCtx = matrixCanvas.getContext("2d");
+    let cols = 0;
+    let drops = [];
+    const chars = "01DRAFTGMLOCKSIMAWSRAGODDS市场天赋顺位资金背离作战室";
+    function resizeMatrix() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      matrixCanvas.width = innerWidth * dpr;
+      matrixCanvas.height = innerHeight * dpr;
+      matrixCanvas.style.width = `${innerWidth}px`;
+      matrixCanvas.style.height = `${innerHeight}px`;
+      matrixCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cols = Math.ceil(innerWidth / 18);
+      drops = Array.from({ length: cols }, () => Math.random() * -innerHeight);
+    }
+    function drawMatrix() {
+      matrixCtx.fillStyle = "rgba(0, 5, 3, .15)";
+      matrixCtx.fillRect(0, 0, innerWidth, innerHeight);
+      matrixCtx.font = "15px FusionPixel12, Menlo, monospace";
+      for (let i = 0; i < cols; i++) {
+        const x = i * 18;
+        const y = drops[i];
+        const hot = Math.random() > .988;
+        matrixCtx.fillStyle = hot ? "rgba(238,255,245,.86)" : "rgba(40,255,130,.62)";
+        matrixCtx.fillText(chars[Math.floor(Math.random() * chars.length)], x, y);
+        drops[i] += 16 + Math.random() * 8;
+        if (drops[i] > innerHeight + 40 && Math.random() > .965) drops[i] = Math.random() * -180;
+      }
+      requestAnimationFrame(drawMatrix);
+    }
+    resizeMatrix();
+    drawMatrix();
+    addEventListener("resize", resizeMatrix);
+
+    const noiseCanvas = document.getElementById("noise-bg");
+    function initWebGLNoise() {
+      const gl = noiseCanvas.getContext("webgl", { antialias: false, alpha: true });
+      if (!gl) return false;
+      const vertex = `
+        attribute vec2 p;
+        void main(){ gl_Position = vec4(p,0.0,1.0); }
+      `;
+      const fragment = `
+        precision mediump float;
+        uniform vec2 r;
+        uniform float t;
+        float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453123); }
+        float noise(vec2 p){
+          vec2 i=floor(p), f=fract(p);
+          float a=hash(i), b=hash(i+vec2(1.,0.)), c=hash(i+vec2(0.,1.)), d=hash(i+vec2(1.,1.));
+          vec2 u=f*f*(3.-2.*f);
+          return mix(a,b,u.x)+(c-a)*u.y*(1.-u.x)+(d-b)*u.x*u.y;
+        }
+        void main(){
+          vec2 uv = gl_FragCoord.xy / r.xy;
+          vec2 p = uv * 3.0;
+          float n = noise(p + vec2(t*.035, -t*.02));
+          float n2 = noise(p*2.1 - vec2(t*.02, t*.026));
+          float field = smoothstep(.34,.86,n*.68+n2*.42);
+          vec3 col = mix(vec3(0.0,0.0,0.0), vec3(.08,1.0,.42), field);
+          col += vec3(.02,.56,.62) * pow(max(0.0, 1.0 - distance(uv, vec2(.72,.22))*1.9), 3.0);
+          float vign = smoothstep(.86,.22,distance(uv,vec2(.5,.48)));
+          gl_FragColor = vec4(col, field * .18 * vign);
+        }
+      `;
+      function shader(type, source) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, source);
+        gl.compileShader(s);
+        return s;
+      }
+      const program = gl.createProgram();
+      gl.attachShader(program, shader(gl.VERTEX_SHADER, vertex));
+      gl.attachShader(program, shader(gl.FRAGMENT_SHADER, fragment));
+      gl.linkProgram(program);
+      gl.useProgram(program);
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(program, "p");
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      const resLoc = gl.getUniformLocation(program, "r");
+      const timeLoc = gl.getUniformLocation(program, "t");
+      function resizeNoise() {
+        const dpr = Math.min(devicePixelRatio || 1, 2);
+        noiseCanvas.width = innerWidth * dpr;
+        noiseCanvas.height = innerHeight * dpr;
+        noiseCanvas.style.width = `${innerWidth}px`;
+        noiseCanvas.style.height = `${innerHeight}px`;
+        gl.viewport(0, 0, noiseCanvas.width, noiseCanvas.height);
+      }
+      function render(ms) {
+        gl.uniform2f(resLoc, noiseCanvas.width, noiseCanvas.height);
+        gl.uniform1f(timeLoc, ms * .001);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        requestAnimationFrame(render);
+      }
+      resizeNoise();
+      addEventListener("resize", resizeNoise);
+      requestAnimationFrame(render);
+      return true;
+    }
+    if (!initWebGLNoise()) {
+      noiseCanvas.style.background = "radial-gradient(circle at 40% 25%, rgba(55,255,139,.16), transparent 30%), radial-gradient(circle at 75% 70%, rgba(102,246,255,.1), transparent 32%)";
+    }
+  </script>
+</body>
+</html>

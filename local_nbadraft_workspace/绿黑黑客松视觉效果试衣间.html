@@ -1,0 +1,1052 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>绿黑黑客松视觉效果试衣间 · ReDraft</title>
+  <style>
+    :root {
+      --bg: #020705;
+      --panel: rgba(6, 20, 12, .82);
+      --panel-2: rgba(9, 31, 18, .92);
+      --text: #effff5;
+      --muted: #8caf9b;
+      --line: rgba(115, 255, 170, .18);
+      --green: #37ff8b;
+      --green-2: #b7ffd1;
+      --amber: #f1c96b;
+      --red: #ff4d70;
+      --cyan: #62f2ff;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .5);
+      --radius: 8px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, "SF Pro Display", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    html {
+      scroll-snap-type: y mandatory;
+      scroll-behavior: smooth;
+      background: #000;
+    }
+    body {
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.45;
+      overflow-x: hidden;
+      background: #000;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    button, input { font: inherit; }
+
+    #deck { width: 100%; }
+
+    .progress {
+      position: fixed;
+      inset: 0 auto auto 0;
+      width: 0;
+      height: 3px;
+      z-index: 80;
+      background: linear-gradient(90deg, var(--green), var(--cyan));
+      box-shadow: 0 0 18px rgba(55, 255, 139, .6);
+      transition: width .18s ease;
+    }
+
+    .rail {
+      position: fixed;
+      z-index: 70;
+      right: clamp(10px, 1.6vw, 24px);
+      top: 50%;
+      transform: translateY(-50%);
+      display: grid;
+      gap: 12px;
+      justify-items: center;
+    }
+    .counter {
+      color: rgba(239, 255, 245, .72);
+      font: 700 12px/1 var(--mono);
+      writing-mode: vertical-rl;
+      letter-spacing: .16em;
+    }
+    .counter b { color: var(--green); }
+    .dot {
+      width: 11px;
+      height: 11px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid rgba(239, 255, 245, .35);
+      background: transparent;
+      cursor: pointer;
+      transition: transform .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .dot:hover,
+    .dot[aria-current="true"] {
+      transform: scale(1.25);
+      border-color: var(--green);
+      background: var(--green);
+      box-shadow: 0 0 0 5px rgba(55, 255, 139, .12), 0 0 18px rgba(55, 255, 139, .55);
+    }
+
+    .slide {
+      --theme-green: var(--green);
+      --theme-dim: #08160d;
+      --theme-panel: var(--panel);
+      --theme-line: var(--line);
+      position: relative;
+      min-height: 100svh;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      overflow: hidden;
+      isolation: isolate;
+      padding: clamp(20px, 4vw, 54px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(860px 500px at 76% 12%, color-mix(in srgb, var(--theme-green) 16%, transparent), transparent 62%),
+        radial-gradient(720px 500px at 8% 88%, rgba(255, 255, 255, .04), transparent 65%),
+        var(--bg);
+    }
+    .slide::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -4;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, .045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .04) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(110% 88% at 54% 38%, #000 40%, transparent 100%);
+      opacity: .6;
+    }
+    .slide::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -3;
+      pointer-events: none;
+      background:
+        linear-gradient(transparent 50%, rgba(0, 0, 0, .08) 50%) 0 0 / 100% 4px,
+        radial-gradient(closest-side at 50% 50%, transparent 68%, rgba(0, 0, 0, .55));
+      opacity: .25;
+    }
+
+    .fx-canvas {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      width: 100%;
+      height: 100%;
+      opacity: .82;
+    }
+
+    .frame {
+      width: min(1240px, calc(100vw - clamp(44px, 10vw, 130px)));
+      min-height: min(720px, calc(100svh - 64px));
+      display: flex;
+      flex-direction: column;
+      gap: clamp(12px, 1.5vh, 18px);
+      position: relative;
+    }
+
+    .topline,
+    .takeaway {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      color: var(--muted);
+      font: 700 12px/1.2 var(--mono);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .theme-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .theme-tag::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--theme-green);
+      box-shadow: 0 0 18px var(--theme-green);
+    }
+    .same-note { text-align: right; }
+
+    .stage {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(360px, .88fr) minmax(520px, 1.12fr);
+      gap: clamp(18px, 3vw, 38px);
+      align-items: stretch;
+    }
+
+    .hero,
+    .system {
+      position: relative;
+      border: 1px solid var(--theme-line);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .04), transparent), var(--theme-panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .hero { padding: clamp(24px, 4vw, 54px); display: flex; flex-direction: column; justify-content: space-between; }
+    .system { padding: clamp(16px, 2vw, 24px); display: flex; flex-direction: column; gap: 12px; }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--theme-green);
+      font: 800 12px/1 var(--mono);
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .eyebrow::after {
+      content: "";
+      width: 62px;
+      height: 1px;
+      background: linear-gradient(90deg, var(--theme-green), transparent);
+    }
+    .wordmark {
+      margin: 20px 0 0;
+      font-size: clamp(46px, 7vw, 88px);
+      line-height: .86;
+      letter-spacing: -.07em;
+      font-weight: 900;
+      color: var(--text);
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+    .subtitle {
+      margin: 16px 0 0;
+      font-size: clamp(20px, 3vw, 38px);
+      line-height: 1.14;
+      font-weight: 800;
+    }
+    .claim {
+      margin: clamp(18px, 3vh, 34px) 0 0;
+      color: var(--muted);
+      font-size: clamp(15px, 1.5vw, 20px);
+      max-width: 34em;
+    }
+
+    .metric {
+      margin-top: clamp(28px, 5vh, 58px);
+      border: 1px solid var(--theme-line);
+      background: rgba(0, 0, 0, .28);
+      padding: 18px;
+      display: grid;
+      gap: 8px;
+    }
+    .metric span {
+      color: var(--amber);
+      font: 900 clamp(20px, 3.2vw, 42px)/1 var(--mono);
+      letter-spacing: -.04em;
+      overflow-wrap: anywhere;
+    }
+    .metric small {
+      color: var(--muted);
+      font: 700 11px/1.4 var(--mono);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .chips {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .chip {
+      border: 1px solid var(--theme-line);
+      background: rgba(0, 0, 0, .24);
+      min-height: 46px;
+      padding: 9px;
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font: 700 11px/1.2 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .chip strong {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text);
+      font-size: 12px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .chip strong::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--theme-green);
+      box-shadow: 0 0 14px var(--theme-green);
+    }
+
+    .signals {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .signal {
+      position: relative;
+      min-height: 100px;
+      border: 1px solid var(--theme-line);
+      background: rgba(255, 255, 255, .035);
+      padding: 13px;
+      overflow: hidden;
+    }
+    .signal h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.2;
+    }
+    .signal p {
+      margin: 7px 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 30px;
+    }
+    .signal .value {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--theme-green);
+      font: 900 24px/1 var(--mono);
+    }
+    .bar {
+      height: 6px;
+      flex: 1;
+      background: rgba(255, 255, 255, .08);
+      overflow: hidden;
+      border-radius: 99px;
+      margin-bottom: 4px;
+    }
+    .bar i {
+      display: block;
+      height: 100%;
+      width: var(--w, 70%);
+      background: linear-gradient(90deg, var(--theme-green), var(--cyan));
+      transform-origin: left;
+      transform: scaleX(.15);
+      opacity: .72;
+    }
+    .slide.active .bar i { animation: barIn .85s cubic-bezier(.2, .8, .2, 1) forwards; }
+    @keyframes barIn { to { transform: scaleX(1); } }
+
+    .board-wrap {
+      flex: 1;
+      min-height: 0;
+      border: 1px solid var(--theme-line);
+      background: rgba(0, 0, 0, .25);
+      padding: 12px;
+      display: grid;
+      gap: 6px;
+    }
+    .board-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font: 800 11px/1 var(--mono);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .board {
+      display: grid;
+      gap: 5px;
+    }
+    .pick {
+      min-height: 25px;
+      display: grid;
+      grid-template-columns: 38px 1fr 72px;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid rgba(255, 255, 255, .06);
+      background: rgba(255, 255, 255, .035);
+      padding: 5px 9px;
+      color: var(--muted);
+      font: 700 12px/1.1 var(--mono);
+      opacity: 0;
+      transform: translateX(-12px);
+    }
+    .slide.active .pick { animation: rowIn .5s ease forwards; animation-delay: calc(var(--i) * 65ms); }
+    @keyframes rowIn { to { opacity: 1; transform: none; } }
+    .pick b { color: var(--text); }
+    .pick em { color: var(--theme-green); font-style: normal; text-align: right; }
+
+    .audit {
+      border: 1px solid var(--theme-line);
+      background: rgba(0, 0, 0, .24);
+      padding: 10px 12px;
+      color: var(--muted);
+      font: 700 12px/1.55 var(--mono);
+    }
+    .audit b { color: var(--theme-green); }
+
+    .takeaway {
+      border-top: 1px solid var(--theme-line);
+      padding-top: 14px;
+      letter-spacing: 0;
+      text-transform: none;
+      font-family: var(--sans);
+      font-size: clamp(14px, 1.4vw, 18px);
+      color: var(--text);
+    }
+    .takeaway strong {
+      color: var(--theme-green);
+      font: 900 11px/1 var(--mono);
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .hero > *,
+    .system > *,
+    .takeaway {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* T01: phosphor war room */
+    .t01 {
+      --bg: #020805;
+      --theme-green: #39ff88;
+      --theme-panel: rgba(5, 20, 11, .76);
+      --theme-line: rgba(57, 255, 136, .2);
+    }
+    .t01 .hero,
+    .t01 .system {
+      border-radius: 8px;
+      backdrop-filter: blur(18px) saturate(1.3);
+    }
+    .t01 .hero::after,
+    .t01 .system::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(105deg, rgba(255,255,255,.12), transparent 24%, transparent 76%, rgba(57,255,136,.08));
+      opacity: .42;
+    }
+
+    /* T02: matrix draft night */
+    .t02 {
+      --bg: #000402;
+      --theme-green: #00ff66;
+      --theme-panel: rgba(0, 8, 3, .78);
+      --theme-line: rgba(0, 255, 102, .28);
+      font-family: var(--mono);
+    }
+    .t02::before { opacity: .18; }
+    .t02 .hero,
+    .t02 .system,
+    .t02 .signal,
+    .t02 .chip,
+    .t02 .board-wrap,
+    .t02 .audit,
+    .t02 .metric {
+      border-radius: 0;
+      box-shadow: inset 0 0 0 1px rgba(0, 255, 102, .06), 0 0 30px rgba(0, 255, 102, .08);
+    }
+    .t02 .wordmark {
+      text-shadow: 2px 0 rgba(255, 80, 120, .7), -2px 0 rgba(98, 242, 255, .5), 0 0 24px rgba(0, 255, 102, .6);
+      animation: glitch 2.6s steps(2) infinite;
+    }
+    @keyframes glitch {
+      0%, 86%, 100% { transform: none; filter: none; }
+      88% { transform: translateX(-3px); filter: hue-rotate(18deg); }
+      90% { transform: translateX(3px); }
+      92% { transform: translateX(-1px); }
+    }
+
+    /* T03: terminal commissioner */
+    .t03 {
+      --bg: #010302;
+      --theme-green: #b8ffd0;
+      --theme-panel: rgba(0, 0, 0, .84);
+      --theme-line: rgba(184, 255, 208, .26);
+      font-family: var(--mono);
+    }
+    .t03 .frame {
+      border: 1px solid var(--theme-line);
+      padding: 18px;
+      background: rgba(0, 0, 0, .44);
+      box-shadow: inset 0 0 44px rgba(55, 255, 139, .08), 0 25px 80px rgba(0,0,0,.7);
+    }
+    .t03 .hero,
+    .t03 .system {
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .t03 .wordmark {
+      font-size: clamp(42px, 7vw, 92px);
+      letter-spacing: -.02em;
+      text-transform: none;
+    }
+    .t03 .wordmark::before { content: "$ "; color: var(--theme-green); }
+    .t03 .subtitle::after {
+      content: "_";
+      color: var(--theme-green);
+      animation: blink .9s steps(1) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* T04: cyberdeck control console */
+    .t04 {
+      --bg: #020606;
+      --theme-green: #43ff9f;
+      --theme-panel: rgba(7, 18, 14, .88);
+      --theme-line: rgba(67, 255, 159, .3);
+    }
+    .t04 .hero,
+    .t04 .system,
+    .t04 .signal,
+    .t04 .chip,
+    .t04 .board-wrap,
+    .t04 .audit,
+    .t04 .metric {
+      border-radius: 0;
+      clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+    }
+    .t04 .frame::after {
+      content: "MODE 01   TALENT   MARKET   SIM   AUDIT   LOCK";
+      position: absolute;
+      left: 50%;
+      bottom: 46px;
+      transform: translateX(-50%);
+      padding: 9px 18px;
+      border: 1px solid var(--theme-line);
+      background: rgba(0, 0, 0, .45);
+      color: var(--theme-green);
+      font: 800 11px/1 var(--mono);
+      letter-spacing: .18em;
+      white-space: nowrap;
+      box-shadow: 0 0 30px rgba(67, 255, 159, .1);
+    }
+
+    /* T05: webgl signal field */
+    .t05 {
+      --bg: #010807;
+      --theme-green: #44ffbc;
+      --theme-panel: rgba(4, 18, 17, .62);
+      --theme-line: rgba(68, 255, 188, .18);
+    }
+    .t05::before { opacity: .28; }
+    .t05 .hero,
+    .t05 .system {
+      border-radius: 8px;
+      backdrop-filter: blur(22px) saturate(1.55);
+      background: linear-gradient(180deg, rgba(68, 255, 188, .07), rgba(0, 0, 0, .2)), var(--theme-panel);
+    }
+    .t05 .wordmark {
+      background: linear-gradient(110deg, #f4fff8, var(--theme-green), #62f2ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: sheen 5s linear infinite;
+      background-size: 220% 100%;
+    }
+    @keyframes sheen { to { background-position: 220% 0; } }
+
+    /* T06: reveal green room deck */
+    .t06 {
+      --bg: #041109;
+      --theme-green: #6dff9c;
+      --theme-panel: rgba(4, 17, 9, .94);
+      --theme-line: rgba(109, 255, 156, .2);
+    }
+    .t06 .stage {
+      grid-template-columns: .98fr 1.02fr;
+    }
+    .t06 .hero,
+    .t06 .system {
+      background: rgba(4, 17, 9, .86);
+      border-radius: 8px;
+      box-shadow: none;
+    }
+    .t06 .hero {
+      border-left: 7px solid var(--theme-green);
+    }
+    .t06 .wordmark {
+      font-size: clamp(54px, 8.5vw, 104px);
+      letter-spacing: -.07em;
+    }
+
+    /* T07: hackathon command site */
+    .t07 {
+      --bg: #031008;
+      --theme-green: #34ff89;
+      --theme-panel: rgba(7, 31, 17, .78);
+      --theme-line: rgba(52, 255, 137, .2);
+    }
+    .t07::before {
+      opacity: .36;
+      background-size: 80px 80px;
+    }
+    .t07 .hero,
+    .t07 .system {
+      border-radius: 8px;
+    }
+    .t07 .topline {
+      padding: 12px 16px;
+      border: 1px solid var(--theme-line);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .28);
+    }
+    .t07 .wordmark {
+      font-size: clamp(48px, 8vw, 100px);
+    }
+    .t07 .metric {
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(52, 255, 137, .18), rgba(98, 242, 255, .08));
+    }
+
+    /* T08: minimal quant terminal */
+    .t08 {
+      --bg: #000;
+      --theme-green: #37ff8b;
+      --theme-panel: rgba(0, 0, 0, .72);
+      --theme-line: rgba(55, 255, 139, .18);
+      font-family: var(--mono);
+    }
+    .t08::before,
+    .t08::after {
+      opacity: .08;
+    }
+    .t08 .frame {
+      width: min(1160px, calc(100vw - clamp(44px, 10vw, 130px)));
+    }
+    .t08 .hero,
+    .t08 .system,
+    .t08 .signal,
+    .t08 .chip,
+    .t08 .board-wrap,
+    .t08 .audit,
+    .t08 .metric {
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .t08 .wordmark {
+      font-size: clamp(44px, 7vw, 92px);
+      letter-spacing: -.03em;
+    }
+    .t08 .signal,
+    .t08 .pick,
+    .t08 .chip {
+      border-width: 0 0 1px;
+    }
+
+    @media (max-width: 920px) {
+      .frame { width: min(100%, calc(100vw - 38px)); min-height: auto; }
+      .stage { grid-template-columns: 1fr; }
+      .hero { min-height: 42svh; }
+      .chips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .signals { grid-template-columns: 1fr; }
+      .rail { display: none; }
+      .same-note { display: none; }
+      .t04 .frame::after { display: none; }
+    }
+
+    @media (max-width: 560px) {
+      .slide { padding: 18px; }
+      .topline, .takeaway { align-items: flex-start; flex-direction: column; }
+      .hero, .system { padding: 18px; }
+      .wordmark { font-size: clamp(48px, 18vw, 78px); }
+      .pick { grid-template-columns: 30px 1fr 58px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+      }
+      .fx-canvas { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <nav class="rail" aria-label="视觉模板页导航">
+    <div class="counter" id="counter"><b>01</b> / 08</div>
+    <div id="dots"></div>
+  </nav>
+  <main id="deck"></main>
+
+  <script>
+    const BASE_CONTENT = {
+      projectLabel: "Project",
+      projectName: "ReDraft",
+      subtitle: "让模型回到选秀夜",
+      claim: "只使用选秀前数据,重新评估历届 NBA 新秀的真实顺位价值。",
+      metricLabel: "Core Metric Slot",
+      metric: "[[CORE_METRIC]]",
+      metricHint: "模型跑完后替换为整场最强的一个数字",
+      sameNote: "Same fields / different visual effects",
+      chips: [
+        ["Scout Signal", "READY"],
+        ["Market Signal", "LOCKED"],
+        ["GM Agents", "30 ONLINE"],
+        ["Simulation", "1000 RUNS"]
+      ],
+      signals: [
+        {
+          title: "Talent Signal",
+          body: "速率指标、年龄修正、位置 Z-score 形成天赋侧基准。",
+          value: "82",
+          width: "82%"
+        },
+        {
+          title: "Market Signal",
+          body: "多家 mock 聚合成市场锚点,背离越大越值得深挖。",
+          value: "76",
+          width: "76%"
+        },
+        {
+          title: "GM Fit",
+          body: "30 位 GM Agent 带球队需求、风险偏好和选人 DNA。",
+          value: "30",
+          width: "88%"
+        },
+        {
+          title: "Audit Trail",
+          body: "每个顺位输出理由、证据、置信度和红队挑战记录。",
+          value: "ON",
+          width: "64%"
+        }
+      ],
+      boardTitle: "Draft Board Preview",
+      boardSub: "same abstract picks",
+      board: [
+        ["01", "WAS · Player A", "LOCK"],
+        ["02", "UTA · Player B", "78%"],
+        ["03", "MEM · Player C", "71%"],
+        ["04", "CHI · Player D", "63%"],
+        ["05", "LAC · Player E", "58%"],
+        ["06", "BKN · Player F", "52%"],
+        ["07", "NOP · Player G", "49%"],
+        ["08", "SAS · Player H", "44%"]
+      ],
+      audit: "commissioner.trace: <b>market_gap</b> detected -> scout review -> gm fit -> red-team challenge -> pick confidence updated.",
+      takeawayLabel: "Takeaway",
+      takeaway: "好的选秀模型,既要预测谁会被选,也要判断谁值得更早被选。"
+    };
+
+    const THEMES = [
+      {
+        id: "T01",
+        name: "Phosphor War Room",
+        cls: "t01",
+        note: "低亮度作战室 / dashboard 可信感"
+      },
+      {
+        id: "T02",
+        name: "Matrix Draft Night",
+        cls: "t02",
+        note: "数据雨开场 / 历史回放仪式感",
+        canvas: "matrix"
+      },
+      {
+        id: "T03",
+        name: "Terminal Commissioner",
+        cls: "t03",
+        note: "Agent 审计日志 / 现场解释最清楚"
+      },
+      {
+        id: "T04",
+        name: "Cyberdeck Control Console",
+        cls: "t04",
+        note: "可操作控制台 / 适合 demo"
+      },
+      {
+        id: "T05",
+        name: "WebGL Signal Field",
+        cls: "t05",
+        note: "高级信号场 / 封面材质感",
+        canvas: "signal"
+      },
+      {
+        id: "T06",
+        name: "Reveal Green Room Deck",
+        cls: "t06",
+        note: "最稳路演稿 / 章节节奏清楚"
+      },
+      {
+        id: "T07",
+        name: "Hackathon Command Site",
+        cls: "t07",
+        note: "项目提交入口 / 官网展示"
+      },
+      {
+        id: "T08",
+        name: "Minimal Quant Terminal",
+        cls: "t08",
+        note: "轻量兜底 / 单文件稳定"
+      }
+    ];
+
+    const deck = document.querySelector("#deck");
+    const dots = document.querySelector("#dots");
+    const progress = document.querySelector("#progress");
+    const counter = document.querySelector("#counter");
+    const requestedTheme = new URLSearchParams(location.search).get("theme");
+    const DISPLAY_THEMES = requestedTheme
+      ? [...THEMES].sort((a, b) => (a.id === requestedTheme ? -1 : b.id === requestedTheme ? 1 : 0))
+      : THEMES;
+
+    function pad(n) {
+      return String(n).padStart(2, "0");
+    }
+
+    function chipMarkup() {
+      return BASE_CONTENT.chips.map(([label, value]) => `
+        <div class="chip">
+          <span>${label}</span>
+          <strong>${value}</strong>
+        </div>
+      `).join("");
+    }
+
+    function signalMarkup() {
+      return BASE_CONTENT.signals.map((signal) => `
+        <article class="signal">
+          <h3>${signal.title}</h3>
+          <p>${signal.body}</p>
+          <div class="value">
+            <span>${signal.value}</span>
+            <div class="bar" aria-hidden="true"><i style="--w:${signal.width}"></i></div>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function boardMarkup() {
+      return BASE_CONTENT.board.map((row, index) => `
+        <div class="pick" style="--i:${index}">
+          <span>${row[0]}</span>
+          <b>${row[1]}</b>
+          <em>${row[2]}</em>
+        </div>
+      `).join("");
+    }
+
+    function slideMarkup(theme, index) {
+      const canvas = theme.canvas ? `<canvas class="fx-canvas" data-fx="${theme.canvas}" aria-hidden="true"></canvas>` : "";
+      return `
+        <section class="slide ${theme.cls}" id="${theme.id}" data-index="${index}" aria-label="${theme.id} ${theme.name}">
+          ${canvas}
+          <div class="frame">
+            <header class="topline">
+              <span class="theme-tag">${theme.id} · ${theme.name}</span>
+              <span class="same-note">${BASE_CONTENT.sameNote}</span>
+            </header>
+            <div class="stage">
+              <section class="hero">
+                <div>
+                  <div class="eyebrow">${BASE_CONTENT.projectLabel}</div>
+                  <h1 class="wordmark">${BASE_CONTENT.projectName}</h1>
+                  <div class="subtitle">${BASE_CONTENT.subtitle}</div>
+                  <p class="claim">${BASE_CONTENT.claim}</p>
+                </div>
+                <div class="metric">
+                  <small>${BASE_CONTENT.metricLabel}</small>
+                  <span>${BASE_CONTENT.metric}</span>
+                  <small>${BASE_CONTENT.metricHint}</small>
+                </div>
+              </section>
+              <section class="system">
+                <div class="chips">${chipMarkup()}</div>
+                <div class="signals">${signalMarkup()}</div>
+                <div class="board-wrap">
+                  <div class="board-title">
+                    <span>${BASE_CONTENT.boardTitle}</span>
+                    <span>${BASE_CONTENT.boardSub}</span>
+                  </div>
+                  <div class="board">${boardMarkup()}</div>
+                </div>
+                <div class="audit">${BASE_CONTENT.audit}</div>
+              </section>
+            </div>
+            <footer class="takeaway">
+              <strong>${BASE_CONTENT.takeawayLabel}</strong>
+              <span>${BASE_CONTENT.takeaway}</span>
+              <span>${theme.note}</span>
+            </footer>
+          </div>
+        </section>
+      `;
+    }
+
+    deck.innerHTML = DISPLAY_THEMES.map(slideMarkup).join("");
+    dots.innerHTML = DISPLAY_THEMES.map((theme, index) => `
+      <button class="dot" type="button" aria-label="跳到 ${theme.id} ${theme.name}" data-target="${theme.id}"></button>
+    `).join("");
+
+    const slides = [...document.querySelectorAll(".slide")];
+    const dotButtons = [...document.querySelectorAll(".dot")];
+
+    dotButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        document.getElementById(button.dataset.target).scrollIntoView({ behavior: "smooth" });
+      });
+    });
+
+    function setActive(index) {
+      slides.forEach((slide, i) => slide.classList.toggle("active", i === index));
+      dotButtons.forEach((dot, i) => dot.setAttribute("aria-current", i === index ? "true" : "false"));
+      counter.innerHTML = `<b>${pad(index + 1)}</b> / ${pad(slides.length)}`;
+      progress.style.width = `${((index + 1) / slides.length) * 100}%`;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) setActive(Number(visible.target.dataset.index));
+    }, { threshold: [0.55, 0.75] });
+    slides.forEach((slide) => observer.observe(slide));
+    setActive(0);
+    const startTheme = location.hash.slice(1);
+    if (startTheme) {
+      const target = document.getElementById(startTheme);
+      if (target) {
+        const index = slides.indexOf(target);
+        setActive(index);
+        target.scrollIntoView({ behavior: "auto" });
+        requestAnimationFrame(() => {
+          target.scrollIntoView({ behavior: "auto" });
+          setActive(index);
+        });
+      }
+    }
+
+    document.addEventListener("keydown", (event) => {
+      const active = slides.findIndex((slide) => slide.classList.contains("active"));
+      let next = active;
+      if (["ArrowDown", "PageDown", " "].includes(event.key)) next = Math.min(slides.length - 1, active + 1);
+      if (["ArrowUp", "PageUp"].includes(event.key)) next = Math.max(0, active - 1);
+      if (event.key === "Home") next = 0;
+      if (event.key === "End") next = slides.length - 1;
+      if (next !== active) {
+        event.preventDefault();
+        slides[next].scrollIntoView({ behavior: "smooth" });
+      }
+    });
+
+    function setupCanvas(canvas) {
+      const ctx = canvas.getContext("2d");
+      const type = canvas.dataset.fx;
+      let width = 0;
+      let height = 0;
+      let dpr = 1;
+      let frame = 0;
+      let drops = [];
+      let points = [];
+
+      function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = canvas.clientWidth;
+        height = canvas.clientHeight;
+        canvas.width = Math.max(1, Math.floor(width * dpr));
+        canvas.height = Math.max(1, Math.floor(height * dpr));
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        if (type === "matrix") {
+          const cols = Math.ceil(width / 18);
+          drops = Array.from({ length: cols }, () => Math.random() * -height);
+        } else {
+          points = Array.from({ length: 70 }, () => ({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - .5) * .45,
+            vy: (Math.random() - .5) * .45,
+            r: 1 + Math.random() * 2
+          }));
+        }
+      }
+
+      function drawMatrix() {
+        ctx.fillStyle = "rgba(0, 4, 2, .16)";
+        ctx.fillRect(0, 0, width, height);
+        ctx.font = "15px ui-monospace, Menlo, monospace";
+        for (let i = 0; i < drops.length; i++) {
+          const x = i * 18;
+          const y = drops[i];
+          const isHot = Math.random() > .985;
+          ctx.fillStyle = isHot ? "#effff5" : "rgba(0, 255, 102, .72)";
+          const chars = "01DRAFTGMLOCKSIM市場天赋顺位";
+          ctx.fillText(chars[Math.floor(Math.random() * chars.length)], x, y);
+          drops[i] += 18 + Math.random() * 7;
+          if (drops[i] > height + 40 && Math.random() > .975) drops[i] = Math.random() * -160;
+        }
+      }
+
+      function drawSignal() {
+        const grad = ctx.createRadialGradient(width * .65, height * .25, 20, width * .65, height * .25, Math.max(width, height) * .82);
+        grad.addColorStop(0, "rgba(68,255,188,.22)");
+        grad.addColorStop(.48, "rgba(12,82,64,.08)");
+        grad.addColorStop(1, "rgba(0,0,0,.08)");
+        ctx.fillStyle = "rgba(1,8,7,.18)";
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        for (const p of points) {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0 || p.x > width) p.vx *= -1;
+          if (p.y < 0 || p.y > height) p.vy *= -1;
+        }
+
+        for (let i = 0; i < points.length; i++) {
+          for (let j = i + 1; j < points.length; j++) {
+            const a = points[i], b = points[j];
+            const dx = a.x - b.x, dy = a.y - b.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 120) {
+              ctx.strokeStyle = `rgba(68,255,188,${(1 - dist / 120) * .18})`;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+            }
+          }
+        }
+        for (const p of points) {
+          ctx.fillStyle = "rgba(68,255,188,.65)";
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function tick() {
+        frame++;
+        if (type === "matrix") drawMatrix();
+        if (type === "signal") drawSignal();
+        requestAnimationFrame(tick);
+      }
+
+      window.addEventListener("resize", resize);
+      resize();
+      tick();
+    }
+
+    document.querySelectorAll(".fx-canvas").forEach(setupCanvas);
+  </script>
+</body>
+</html>

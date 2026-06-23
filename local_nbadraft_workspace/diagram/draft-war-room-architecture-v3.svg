@@ -1,0 +1,699 @@
+<svg viewBox="0 0 1600 2100" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Draft War Room v3 Architecture</title>
+  <desc id="desc">A paper-style SVG architecture diagram for the NBA Draft War Room system, showing serverless collection, five-layer knowledge base, Bedrock multi-agent war room, tri-signal fusion, Monte Carlo simulation, and delivery outputs.</desc>
+  <defs>
+    <pattern id="paperDots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="0.8" fill="#dbcfc1" opacity="0.35"/>
+    </pattern>
+    <pattern id="miniGrid" width="16" height="16" patternUnits="userSpaceOnUse">
+      <path d="M16 0H0V16" fill="none" stroke="#d8d1c8" stroke-width="0.45" opacity="0.55"/>
+    </pattern>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#806f62" flood-opacity="0.16"/>
+    </filter>
+    <filter id="tinyShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#4a3d36" flood-opacity="0.18"/>
+    </filter>
+
+    <marker id="arrowDark" markerWidth="12" markerHeight="9" refX="10" refY="4.5" orient="auto">
+      <path d="M0,0 L11,4.5 L0,9 Z" fill="#202225"/>
+    </marker>
+    <marker id="arrowGrey" markerWidth="12" markerHeight="9" refX="10" refY="4.5" orient="auto">
+      <path d="M0,0 L11,4.5 L0,9 Z" fill="#7e8790"/>
+    </marker>
+    <marker id="arrowTalent" markerWidth="12" markerHeight="9" refX="10" refY="4.5" orient="auto">
+      <path d="M0,0 L11,4.5 L0,9 Z" fill="#5f9368"/>
+    </marker>
+    <marker id="arrowExpert" markerWidth="12" markerHeight="9" refX="10" refY="4.5" orient="auto">
+      <path d="M0,0 L11,4.5 L0,9 Z" fill="#4e79b9"/>
+    </marker>
+    <marker id="arrowMoney" markerWidth="12" markerHeight="9" refX="10" refY="4.5" orient="auto">
+      <path d="M0,0 L11,4.5 L0,9 Z" fill="#d88a25"/>
+    </marker>
+    <marker id="arrowLive" markerWidth="12" markerHeight="9" refX="10" refY="4.5" orient="auto">
+      <path d="M0,0 L11,4.5 L0,9 Z" fill="#c65f77"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="12" markerHeight="9" refX="10" refY="4.5" orient="auto">
+      <path d="M0,0 L11,4.5 L0,9 Z" fill="#8d6aa8"/>
+    </marker>
+
+    <linearGradient id="paperWarm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff8ee"/>
+      <stop offset="1" stop-color="#f7efe4"/>
+    </linearGradient>
+    <linearGradient id="agentGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff6d8"/>
+      <stop offset="1" stop-color="#f9e3d5"/>
+    </linearGradient>
+    <linearGradient id="simGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f3faec"/>
+      <stop offset="1" stop-color="#e6f3dd"/>
+    </linearGradient>
+
+    <symbol id="iconBasketball" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="20" fill="#fcbe6f" stroke="#1f2328" stroke-width="2"/>
+      <path d="M7 25h34M24 4c-7 7-7 33 0 40M24 4c7 7 7 33 0 40M11 12c7 6 19 6 26 0M11 36c7-6 19-6 26 0" fill="none" stroke="#7a4a13" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="iconCloud" viewBox="0 0 64 48">
+      <path d="M21 38h27c7 0 12-5 12-11s-5-11-12-11h-1C44 8 37 4 29 6c-7 1-12 6-14 13C8 20 4 24 4 30c0 5 4 8 10 8h7z" fill="#c4dcf6" stroke="#223047" stroke-width="2"/>
+      <path d="M18 29h31" stroke="#5f7da6" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="iconBrowser" viewBox="0 0 64 48">
+      <rect x="6" y="8" width="52" height="34" rx="5" fill="#eff5fb" stroke="#1f2328" stroke-width="2"/>
+      <path d="M6 18h52" stroke="#1f2328" stroke-width="2"/>
+      <circle cx="14" cy="13" r="2" fill="#f26a6a"/>
+      <circle cx="22" cy="13" r="2" fill="#f4b84a"/>
+      <circle cx="30" cy="13" r="2" fill="#69b96f"/>
+      <path d="M18 29h28M18 35h18" stroke="#64748b" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="iconDB" viewBox="0 0 60 58">
+      <ellipse cx="30" cy="12" rx="22" ry="8" fill="#c9abd1" stroke="#1f2328" stroke-width="2"/>
+      <path d="M8 12v28c0 5 10 9 22 9s22-4 22-9V12" fill="#eadcef" stroke="#1f2328" stroke-width="2"/>
+      <path d="M8 25c0 5 10 9 22 9s22-4 22-9M8 38c0 5 10 9 22 9s22-4 22-9" fill="none" stroke="#7c5c89" stroke-width="1.5"/>
+    </symbol>
+    <symbol id="iconS3" viewBox="0 0 58 58">
+      <path d="M11 13l18-8 18 8v31l-18 9-18-9z" fill="#f8caac" stroke="#1f2328" stroke-width="2"/>
+      <path d="M11 13l18 8 18-8M29 21v32M11 44l18-8 18 8" fill="none" stroke="#ad6b3e" stroke-width="1.6"/>
+    </symbol>
+    <symbol id="iconBrain" viewBox="0 0 64 54">
+      <path d="M22 44c-8 0-14-6-14-14 0-6 3-11 9-13 1-7 7-11 14-9 3-4 10-4 14 0 7-1 13 4 13 11 4 3 5 7 4 12-1 7-7 12-15 12z" fill="#e1eeda" stroke="#1f2328" stroke-width="2"/>
+      <path d="M22 18c5 1 8 5 8 11M40 16c-5 3-7 8-5 14M19 31c5-2 10-1 14 3M43 30c4 0 8 2 11 6" fill="none" stroke="#5d8e67" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="24" cy="25" r="2.4" fill="#5d8e67"/>
+      <circle cx="38" cy="25" r="2.4" fill="#5d8e67"/>
+      <circle cx="31" cy="35" r="2.4" fill="#5d8e67"/>
+    </symbol>
+    <symbol id="iconGM" viewBox="0 0 56 62">
+      <circle cx="28" cy="18" r="13" fill="#f9e3d5" stroke="#1f2328" stroke-width="2"/>
+      <path d="M14 56c2-15 26-15 28 0z" fill="#c4dcf6" stroke="#1f2328" stroke-width="2"/>
+      <path d="M18 16c6-8 18-8 22 0" fill="none" stroke="#222" stroke-width="2" stroke-linecap="round"/>
+      <path d="M22 40l6 8 6-8" fill="none" stroke="#4e79b9" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="iconShield" viewBox="0 0 54 62">
+      <path d="M27 5l20 8v15c0 14-8 23-20 29C15 51 7 42 7 28V13z" fill="#fadde0" stroke="#1f2328" stroke-width="2"/>
+      <path d="M17 30l7 7 14-17" fill="none" stroke="#b94b63" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="iconDice" viewBox="0 0 58 58">
+      <rect x="8" y="8" width="42" height="42" rx="8" fill="#fff7e7" stroke="#1f2328" stroke-width="2"/>
+      <circle cx="20" cy="20" r="3" fill="#1f2328"/>
+      <circle cx="38" cy="20" r="3" fill="#1f2328"/>
+      <circle cx="29" cy="29" r="3" fill="#1f2328"/>
+      <circle cx="20" cy="38" r="3" fill="#1f2328"/>
+      <circle cx="38" cy="38" r="3" fill="#1f2328"/>
+    </symbol>
+    <symbol id="iconChart" viewBox="0 0 64 52">
+      <rect x="6" y="5" width="52" height="42" rx="5" fill="#eff5fb" stroke="#1f2328" stroke-width="2"/>
+      <path d="M14 38l10-12 9 6 14-18" fill="none" stroke="#4e79b9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M14 38h38" stroke="#7e8790" stroke-width="1.4"/>
+      <circle cx="24" cy="26" r="2.5" fill="#5f9368"/>
+      <circle cx="33" cy="32" r="2.5" fill="#d88a25"/>
+      <circle cx="47" cy="14" r="2.5" fill="#c65f77"/>
+    </symbol>
+    <symbol id="iconAPI" viewBox="0 0 64 54">
+      <rect x="6" y="8" width="52" height="38" rx="7" fill="#d6e8fb" stroke="#1f2328" stroke-width="2"/>
+      <path d="M18 34l-8-7 8-7M46 20l8 7-8 7M27 36l10-20" fill="none" stroke="#2c4f78" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="iconLock" viewBox="0 0 56 58">
+      <rect x="10" y="24" width="36" height="27" rx="5" fill="#d0cece" stroke="#1f2328" stroke-width="2"/>
+      <path d="M18 24v-7c0-7 4-11 10-11s10 4 10 11v7" fill="none" stroke="#1f2328" stroke-width="3"/>
+      <circle cx="28" cy="37" r="3" fill="#1f2328"/>
+      <path d="M28 39v7" stroke="#1f2328" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="iconDoc" viewBox="0 0 52 60">
+      <path d="M10 5h24l8 9v41H10z" fill="#ffffff" stroke="#1f2328" stroke-width="2"/>
+      <path d="M34 5v10h8" fill="none" stroke="#1f2328" stroke-width="2"/>
+      <path d="M17 25h18M17 33h18M17 41h12" stroke="#64748b" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+
+    <style>
+      text { font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; fill: #1f2328; }
+      .serif { font-family: Georgia, "Times New Roman", serif; }
+      .title { font-size: 37px; font-weight: 700; letter-spacing: 0; }
+      .subtitle { font-size: 26px; font-weight: 600; }
+      .panel-title { font-size: 20px; font-weight: 700; letter-spacing: 0; }
+      .section-title { font-size: 18px; font-weight: 700; }
+      .label { font-size: 15px; font-weight: 700; }
+      .small { font-size: 12px; font-weight: 500; }
+      .tiny { font-size: 10.5px; font-weight: 500; }
+      .micro { font-size: 9px; font-weight: 500; }
+      .muted { fill: #5d6671; }
+      .faint { fill: #79828a; }
+      .box { filter: url(#tinyShadow); }
+      .paper-panel { stroke: #1f2328; stroke-width: 1.8; filter: url(#softShadow); }
+      .dash-blue { fill: none; stroke: #596b8f; stroke-width: 3; stroke-dasharray: 10 8; }
+      .dash-olive { fill: none; stroke: #71815d; stroke-width: 3; stroke-dasharray: 10 8; }
+      .dash-orange { fill: none; stroke: #a46623; stroke-width: 3; stroke-dasharray: 10 8; }
+      .dash-purple { fill: none; stroke: #6a5d88; stroke-width: 3; stroke-dasharray: 10 8; }
+      .dash-black { fill: none; stroke: #4b4f54; stroke-width: 2; stroke-dasharray: 9 7; }
+      .arrow { fill: none; stroke: #202225; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowDark); }
+      .arrow-thin { fill: none; stroke: #5f6770; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowGrey); }
+      .arrow-dashed { fill: none; stroke: #7e8790; stroke-width: 2.4; stroke-dasharray: 8 7; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowGrey); }
+      .talent-line { fill: none; stroke: #5f9368; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowTalent); }
+      .expert-line { fill: none; stroke: #4e79b9; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowExpert); }
+      .money-line { fill: none; stroke: #d88a25; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowMoney); }
+      .live-line { fill: none; stroke: #c65f77; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowLive); }
+      .purple-line { fill: none; stroke: #8d6aa8; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowPurple); }
+      .chip { stroke: #1f2328; stroke-width: 1.2; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="2100" fill="url(#paperWarm)"/>
+  <rect x="0" y="0" width="1600" height="2100" fill="url(#paperDots)"/>
+
+  <!-- Title block -->
+  <rect x="0" y="0" width="1600" height="172" fill="#f9e3d5" opacity="0.86"/>
+  <rect x="8" y="31" width="19" height="19" fill="#000"/>
+  <text x="60" y="52" class="serif title">Draft War Room: Tri-Signal Fusion with Native Multi-Agent War Room</text>
+  <text x="60" y="93" class="serif title">and Monte Carlo Pick Simulation</text>
+  <rect x="8" y="115" width="19" height="19" fill="#000"/>
+  <text x="60" y="137" class="serif subtitle">2026 NBA Draft Prediction Agent System · AWS Serverless Architecture · v3.0</text>
+  <rect x="0" y="180" width="1600" height="10" fill="#111"/>
+
+  <!-- Top left: collection and knowledge base -->
+  <g id="collection-panel">
+    <rect x="28" y="210" width="735" height="540" rx="14" fill="#eff5fb" class="paper-panel"/>
+    <rect x="42" y="225" width="707" height="510" rx="11" fill="url(#miniGrid)" opacity="0.35"/>
+    <text x="396" y="245" text-anchor="middle" class="panel-title">Serverless Collection &amp; Five-Layer Knowledge Base</text>
+
+    <text x="77" y="278" class="label">All Public Sources</text>
+    <g transform="translate(54 298)" class="box">
+      <use href="#iconBasketball" x="0" y="0" width="42" height="42"/>
+      <text x="60" y="17" class="small">Player / Talent</text>
+      <text x="60" y="34" class="tiny muted">metrics handbook</text>
+    </g>
+    <g transform="translate(54 364)" class="box">
+      <use href="#iconGM" x="-2" y="-4" width="42" height="47"/>
+      <text x="60" y="17" class="small">Team Dossier</text>
+      <text x="60" y="34" class="tiny muted">picks / needs / DNA</text>
+    </g>
+    <g transform="translate(54 430)" class="box">
+      <use href="#iconDoc" x="2" y="-4" width="38" height="45"/>
+      <text x="60" y="17" class="small">Expert Mock</text>
+      <text x="60" y="34" class="tiny muted">ESPN / CBS / Ringer</text>
+    </g>
+    <g transform="translate(54 496)" class="box">
+      <use href="#iconChart" x="-3" y="-3" width="45" height="40"/>
+      <text x="60" y="17" class="small">Odds / Markets</text>
+      <text x="60" y="34" class="tiny muted">de-vig implied prob.</text>
+    </g>
+    <g transform="translate(54 562)" class="box">
+      <use href="#iconBrowser" x="-3" y="-5" width="45" height="40"/>
+      <text x="60" y="17" class="small">News / Social</text>
+      <text x="60" y="34" class="tiny muted">last-48h intel</text>
+    </g>
+
+    <path d="M177 318 C210 318 210 351 239 351" class="arrow-thin"/>
+    <path d="M177 384 C212 384 212 367 239 367" class="arrow-thin"/>
+    <path d="M177 450 C212 450 212 411 239 411" class="arrow-thin"/>
+    <path d="M177 516 C212 516 212 441 239 441" class="arrow-thin"/>
+    <path d="M177 582 C212 582 212 472 239 472" class="arrow-thin"/>
+
+    <g class="box">
+      <rect x="235" y="295" width="168" height="56" rx="8" fill="#f9e3d5" stroke="#1f2328" stroke-width="1.6"/>
+      <use href="#iconCloud" x="247" y="302" width="50" height="38"/>
+      <text x="323" y="317" text-anchor="middle" class="small">EventBridge</text>
+      <text x="323" y="334" text-anchor="middle" class="tiny muted">scheduler / lock rerun</text>
+    </g>
+    <g class="box">
+      <rect x="238" y="373" width="166" height="106" rx="10" fill="#ffffff" stroke="#1f2328" stroke-width="1.8"/>
+      <use href="#iconBrowser" x="291" y="388" width="60" height="45"/>
+      <text x="321" y="448" text-anchor="middle" class="label">Fargate Crawler</text>
+      <text x="321" y="466" text-anchor="middle" class="tiny muted">Playwright / headless Chrome</text>
+    </g>
+    <g class="box">
+      <rect x="238" y="506" width="166" height="82" rx="10" fill="#e1eeda" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="321" y="533" text-anchor="middle" class="label">Normalize &amp; Split</text>
+      <text x="321" y="553" text-anchor="middle" class="tiny muted">structured vs. unstructured</text>
+      <text x="321" y="570" text-anchor="middle" class="tiny muted">source_hash / timestamp</text>
+    </g>
+    <path d="M321 351 L321 370" class="arrow-thin"/>
+    <path d="M321 479 L321 503" class="arrow-thin"/>
+
+    <g class="box">
+      <rect x="454" y="285" width="126" height="85" rx="10" fill="#f8caac" stroke="#1f2328" stroke-width="1.6"/>
+      <use href="#iconS3" x="492" y="296" width="52" height="52"/>
+      <text x="517" y="357" text-anchor="middle" class="small">S3 Raw Zone</text>
+    </g>
+    <g class="box">
+      <rect x="454" y="399" width="126" height="85" rx="10" fill="#eadcef" stroke="#1f2328" stroke-width="1.6"/>
+      <use href="#iconDB" x="491" y="405" width="53" height="52"/>
+      <text x="517" y="472" text-anchor="middle" class="small">DynamoDB</text>
+    </g>
+    <g class="box">
+      <rect x="454" y="515" width="126" height="85" rx="10" fill="#e6f3dd" stroke="#1f2328" stroke-width="1.6"/>
+      <use href="#iconBrain" x="488" y="523" width="58" height="48"/>
+      <text x="517" y="590" text-anchor="middle" class="small">Bedrock KB</text>
+    </g>
+    <path d="M404 538 C428 538 428 328 451 328" class="arrow-thin"/>
+    <path d="M404 544 C428 544 428 441 451 441" class="arrow-thin"/>
+    <path d="M404 551 C428 551 428 558 451 558" class="arrow-thin"/>
+
+    <g>
+      <rect x="612" y="282" width="106" height="48" rx="8" fill="#e6f3dd" stroke="#5f9368" stroke-width="1.8"/>
+      <text x="665" y="302" text-anchor="middle" class="small">Talent</text>
+      <text x="665" y="318" text-anchor="middle" class="micro muted">Big Board</text>
+      <rect x="612" y="350" width="106" height="48" rx="8" fill="#c4dcf6" stroke="#4e79b9" stroke-width="1.8"/>
+      <text x="665" y="370" text-anchor="middle" class="small">Expert</text>
+      <text x="665" y="386" text-anchor="middle" class="micro muted">MockSignal</text>
+      <rect x="612" y="418" width="106" height="48" rx="8" fill="#fcbe6f" stroke="#d88a25" stroke-width="1.8"/>
+      <text x="665" y="438" text-anchor="middle" class="small">Money</text>
+      <text x="665" y="454" text-anchor="middle" class="micro muted">OddsSignal</text>
+      <rect x="612" y="486" width="106" height="48" rx="8" fill="#fadde0" stroke="#c65f77" stroke-width="1.8"/>
+      <text x="665" y="506" text-anchor="middle" class="small">Intel</text>
+      <text x="665" y="522" text-anchor="middle" class="micro muted">line movement</text>
+    </g>
+    <path d="M580 328 L609 306" class="talent-line"/>
+    <path d="M580 442 L609 374" class="expert-line"/>
+    <path d="M580 442 L609 442" class="money-line"/>
+    <path d="M580 558 L609 510" class="live-line"/>
+
+    <g>
+      <rect x="228" y="633" width="500" height="74" rx="10" fill="#fffaf2" stroke="#1f2328" stroke-width="1.6"/>
+      <text x="252" y="657" class="small">Five-layer base:</text>
+      <rect x="365" y="642" width="60" height="28" rx="6" fill="#e6f3dd" class="chip"/>
+      <text x="395" y="662" text-anchor="middle" class="tiny">① 球员</text>
+      <rect x="431" y="642" width="60" height="28" rx="6" fill="#eff5fb" class="chip"/>
+      <text x="461" y="662" text-anchor="middle" class="tiny">② 球队</text>
+      <rect x="497" y="642" width="72" height="28" rx="6" fill="#c4dcf6" class="chip"/>
+      <text x="533" y="662" text-anchor="middle" class="tiny">③a 专家</text>
+      <rect x="575" y="642" width="72" height="28" rx="6" fill="#fcbe6f" class="chip"/>
+      <text x="611" y="662" text-anchor="middle" class="tiny">③b 资金</text>
+      <rect x="653" y="642" width="60" height="28" rx="6" fill="#fadde0" class="chip"/>
+      <text x="683" y="662" text-anchor="middle" class="tiny">⑤ 实时</text>
+      <text x="478" y="690" text-anchor="middle" class="tiny muted">数字进 DynamoDB；scouting / news 进 Bedrock KB；S3 保留原始可审计证据</text>
+    </g>
+  </g>
+
+  <!-- Top right: multi-agent war room -->
+  <g id="agent-panel">
+    <rect x="795" y="210" width="777" height="540" rx="14" fill="#f9e3d5" class="paper-panel"/>
+    <rect x="811" y="225" width="745" height="510" rx="11" fill="url(#miniGrid)" opacity="0.23"/>
+    <text x="1184" y="245" text-anchor="middle" class="panel-title">Bedrock Native Multi-Agent War Room</text>
+
+    <g transform="translate(835 267)">
+      <use href="#iconGM" width="49" height="55"/>
+      <text x="25" y="73" text-anchor="middle" class="tiny">Commissioner</text>
+    </g>
+    <g transform="translate(941 267)">
+      <use href="#iconBasketball" width="45" height="45"/>
+      <text x="23" y="73" text-anchor="middle" class="tiny">Scout</text>
+    </g>
+    <g transform="translate(1043 267)">
+      <use href="#iconDoc" width="45" height="52"/>
+      <text x="23" y="73" text-anchor="middle" class="tiny">Mock</text>
+    </g>
+    <g transform="translate(1145 267)">
+      <use href="#iconChart" width="50" height="42"/>
+      <text x="25" y="73" text-anchor="middle" class="tiny">Odds</text>
+    </g>
+    <g transform="translate(1250 267)">
+      <use href="#iconBrowser" width="50" height="42"/>
+      <text x="25" y="73" text-anchor="middle" class="tiny">Intel</text>
+    </g>
+    <g transform="translate(1350 267)">
+      <use href="#iconShield" width="44" height="52"/>
+      <text x="22" y="73" text-anchor="middle" class="tiny">Red Team</text>
+    </g>
+    <g transform="translate(1450 267)">
+      <use href="#iconGM" width="49" height="55"/>
+      <text x="25" y="73" text-anchor="middle" class="tiny">GM ×30</text>
+    </g>
+
+    <g class="box">
+      <rect x="896" y="370" width="575" height="62" rx="10" fill="#fffaf2" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="1184" y="395" text-anchor="middle" class="label">Commissioner Agent · Supervisor</text>
+      <text x="1184" y="415" text-anchor="middle" class="tiny muted">planning / routing / synthesis / trace / audit log</text>
+    </g>
+    <path d="M861 340 L984 368" class="arrow-thin"/>
+    <path d="M964 340 L1047 368" class="arrow-thin"/>
+    <path d="M1066 340 L1112 368" class="arrow-thin"/>
+    <path d="M1170 340 L1170 367" class="arrow-thin"/>
+    <path d="M1275 340 L1237 368" class="arrow-thin"/>
+    <path d="M1372 340 L1306 368" class="arrow-thin"/>
+    <path d="M1475 340 L1368 368" class="arrow-thin"/>
+
+    <g>
+      <rect x="840" y="464" width="126" height="62" rx="8" fill="#e6f3dd" stroke="#5f9368" stroke-width="1.8"/>
+      <text x="903" y="489" text-anchor="middle" class="small">Scout Agent</text>
+      <text x="903" y="508" text-anchor="middle" class="micro muted">TalentScore</text>
+      <rect x="987" y="464" width="126" height="62" rx="8" fill="#c4dcf6" stroke="#4e79b9" stroke-width="1.8"/>
+      <text x="1050" y="489" text-anchor="middle" class="small">Mock Agent</text>
+      <text x="1050" y="508" text-anchor="middle" class="micro muted">weighted consensus</text>
+      <rect x="1134" y="464" width="126" height="62" rx="8" fill="#fcbe6f" stroke="#d88a25" stroke-width="1.8"/>
+      <text x="1197" y="489" text-anchor="middle" class="small">Odds Agent</text>
+      <text x="1197" y="508" text-anchor="middle" class="micro muted">de-vig / line move</text>
+      <rect x="1281" y="464" width="126" height="62" rx="8" fill="#fadde0" stroke="#c65f77" stroke-width="1.8"/>
+      <text x="1344" y="489" text-anchor="middle" class="small">Intel Agent</text>
+      <text x="1344" y="508" text-anchor="middle" class="micro muted">news velocity</text>
+      <rect x="1428" y="464" width="100" height="62" rx="8" fill="#d0cece" stroke="#4b4f54" stroke-width="1.8"/>
+      <text x="1478" y="489" text-anchor="middle" class="small">Guardrails</text>
+      <text x="1478" y="508" text-anchor="middle" class="micro muted">prompt attack</text>
+    </g>
+    <path d="M1004 432 L903 461" class="talent-line"/>
+    <path d="M1115 432 L1050 461" class="expert-line"/>
+    <path d="M1197 432 L1197 461" class="money-line"/>
+    <path d="M1270 432 L1344 461" class="live-line"/>
+    <path d="M1355 432 L1478 461" class="arrow-thin"/>
+
+    <g class="box">
+      <rect x="845" y="565" width="402" height="142" rx="10" fill="#fffaf2" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="1046" y="590" text-anchor="middle" class="label">Tri-Signal Fusion + Two-Axis Divergence</text>
+      <line x1="884" y1="623" x2="1114" y2="623" stroke="#5f9368" stroke-width="3" marker-end="url(#arrowTalent)"/>
+      <line x1="884" y1="649" x2="1114" y2="649" stroke="#4e79b9" stroke-width="3" marker-end="url(#arrowExpert)"/>
+      <line x1="884" y1="675" x2="1114" y2="675" stroke="#d88a25" stroke-width="3" marker-end="url(#arrowMoney)"/>
+      <text x="893" y="616" class="micro">Talent vs Market</text>
+      <text x="893" y="642" class="micro">Expert vs Money</text>
+      <text x="893" y="668" class="micro">Live Intel Boost</text>
+      <text x="1172" y="633" text-anchor="middle" class="tiny muted">一致 → 锁定</text>
+      <text x="1172" y="660" text-anchor="middle" class="tiny muted">背离 → LLM 推理</text>
+      <text x="1046" y="694" text-anchor="middle" class="micro muted">axis1 = |rank_talent − rank_market| · axis2 = |mock − odds|</text>
+    </g>
+
+    <g class="box">
+      <rect x="1276" y="565" width="252" height="142" rx="10" fill="#fff7e7" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="1402" y="590" text-anchor="middle" class="label">GM Preference Function</text>
+      <text x="1402" y="617" text-anchor="middle" class="tiny">Pref(team,p) =</text>
+      <text x="1402" y="640" text-anchor="middle" class="tiny muted">Talent + Need + Persona</text>
+      <text x="1402" y="662" text-anchor="middle" class="tiny muted">+ Mock + Odds + Intel</text>
+      <rect x="1305" y="678" width="194" height="20" rx="5" fill="#eff5fb" stroke="#4e79b9" stroke-width="1"/>
+      <text x="1402" y="692" text-anchor="middle" class="micro">Inline Agents: one GM template, 30 DNAs</text>
+    </g>
+
+    <path d="M903 526 C903 548 922 548 938 562" class="talent-line"/>
+    <path d="M1050 526 C1050 546 1046 546 1046 562" class="expert-line"/>
+    <path d="M1197 526 C1197 548 1178 548 1159 562" class="money-line"/>
+    <path d="M1344 526 C1328 545 1314 552 1289 577" class="live-line"/>
+    <path d="M1248 636 L1273 636" class="arrow"/>
+
+    <text x="1184" y="731" text-anchor="middle" class="tiny muted">LLM only produces decision functions once; Monte Carlo below performs cheap deterministic sampling at scale.</text>
+  </g>
+
+  <!-- Palette row, matching the provided reference style -->
+  <g id="palette-row" filter="url(#tinyShadow)">
+    <rect x="42" y="788" width="190" height="74" rx="13" fill="#eff5fb" stroke="#9ca6b3"/>
+    <text x="137" y="824" text-anchor="middle" class="serif" font-size="28" font-weight="700">239 245 251</text>
+    <text x="137" y="852" text-anchor="middle" class="serif" font-size="26" font-weight="700">#EFF5FB</text>
+    <rect x="282" y="788" width="190" height="74" rx="13" fill="#f9e3d5" stroke="#bda697"/>
+    <text x="377" y="824" text-anchor="middle" class="serif" font-size="28" font-weight="700">249 227 213</text>
+    <text x="377" y="852" text-anchor="middle" class="serif" font-size="26" font-weight="700">#F9E3D5</text>
+    <rect x="522" y="788" width="190" height="74" rx="13" fill="#e1eeda" stroke="#9aad8f"/>
+    <text x="617" y="824" text-anchor="middle" class="serif" font-size="28" font-weight="700">225 238 218</text>
+    <text x="617" y="852" text-anchor="middle" class="serif" font-size="26" font-weight="700">#E1EEDA</text>
+    <rect x="762" y="788" width="190" height="74" rx="13" fill="#fadde0" stroke="#c9a0aa"/>
+    <text x="857" y="824" text-anchor="middle" class="serif" font-size="28" font-weight="700">250 221 224</text>
+    <text x="857" y="852" text-anchor="middle" class="serif" font-size="26" font-weight="700">#FADDE0</text>
+    <rect x="1002" y="788" width="190" height="74" rx="13" fill="#c4dcf6" stroke="#8eaacc"/>
+    <text x="1097" y="824" text-anchor="middle" class="serif" font-size="28" font-weight="700">196 220 246</text>
+    <text x="1097" y="852" text-anchor="middle" class="serif" font-size="26" font-weight="700">#C4DCF6</text>
+    <rect x="1242" y="788" width="190" height="74" rx="13" fill="#fcbe6f" stroke="#c98228"/>
+    <text x="1337" y="824" text-anchor="middle" class="serif" font-size="28" font-weight="700">252 190 111</text>
+    <text x="1337" y="852" text-anchor="middle" class="serif" font-size="26" font-weight="700">#FCBE6F</text>
+  </g>
+
+  <!-- Main pipeline -->
+  <g id="main-pipeline">
+    <text x="44" y="930" class="section-title">Input Signals</text>
+    <g transform="translate(38 972)" filter="url(#tinyShadow)">
+      <rect x="0" y="0" width="126" height="84" rx="8" fill="#e6f3dd" stroke="#1f2328" stroke-width="1.5"/>
+      <use href="#iconBasketball" x="40" y="9" width="46" height="46"/>
+      <text x="63" y="70" text-anchor="middle" class="small">Talent</text>
+    </g>
+    <g transform="translate(38 1118)" filter="url(#tinyShadow)">
+      <rect x="0" y="0" width="126" height="84" rx="8" fill="#c4dcf6" stroke="#1f2328" stroke-width="1.5"/>
+      <use href="#iconDoc" x="43" y="7" width="40" height="49"/>
+      <text x="63" y="70" text-anchor="middle" class="small">Expert</text>
+    </g>
+    <g transform="translate(38 1264)" filter="url(#tinyShadow)">
+      <rect x="0" y="0" width="126" height="84" rx="8" fill="#fcbe6f" stroke="#1f2328" stroke-width="1.5"/>
+      <use href="#iconChart" x="37" y="12" width="52" height="43"/>
+      <text x="63" y="70" text-anchor="middle" class="small">Money</text>
+    </g>
+    <g transform="translate(38 1410)" filter="url(#tinyShadow)">
+      <rect x="0" y="0" width="126" height="84" rx="8" fill="#fadde0" stroke="#1f2328" stroke-width="1.5"/>
+      <use href="#iconBrowser" x="36" y="12" width="54" height="42"/>
+      <text x="63" y="70" text-anchor="middle" class="small">Live Intel</text>
+    </g>
+    <g transform="translate(62 1524)">
+      <circle cx="39" cy="39" r="38" fill="#fffaf2" stroke="#1f2328" stroke-width="2"/>
+      <text x="39" y="31" text-anchor="middle" class="serif" font-size="24" font-weight="700">30</text>
+      <text x="39" y="52" text-anchor="middle" class="tiny">GM DNAs</text>
+    </g>
+
+    <rect x="248" y="900" width="1060" height="770" rx="16" fill="#ffffff" opacity="0.52"/>
+    <rect x="248" y="900" width="1060" height="770" rx="16" class="dash-blue"/>
+    <text x="778" y="932" text-anchor="middle" class="section-title">Draft War Room Core: signal encoding, agent preference, parallel simulation</text>
+
+    <path d="M164 1014 C206 1014 212 1020 253 1020" class="talent-line"/>
+    <path d="M164 1160 C206 1160 212 1085 253 1085" class="expert-line"/>
+    <path d="M164 1306 C206 1306 212 1150 253 1150" class="money-line"/>
+    <path d="M164 1452 C206 1452 212 1188 253 1188" class="live-line"/>
+    <path d="M140 1542 C205 1542 215 1207 253 1207" class="arrow-dashed"/>
+
+    <!-- Signal encoding module -->
+    <rect x="275" y="960" width="712" height="265" rx="14" fill="#eff5fb" opacity="0.74"/>
+    <rect x="275" y="960" width="712" height="265" rx="14" class="dash-blue"/>
+    <text x="631" y="987" text-anchor="middle" class="label">Signal Encoding &amp; Divergence Module</text>
+
+    <g filter="url(#tinyShadow)">
+      <rect x="308" y="1010" width="158" height="58" rx="9" fill="#e6f3dd" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="387" y="1035" text-anchor="middle" class="label">Talent Encoder</text>
+      <text x="387" y="1054" text-anchor="middle" class="tiny muted">Z-score / age / BPM</text>
+      <rect x="308" y="1086" width="158" height="58" rx="9" fill="#c4dcf6" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="387" y="1111" text-anchor="middle" class="label">Expert Encoder</text>
+      <text x="387" y="1130" text-anchor="middle" class="tiny muted">weighted mock prob.</text>
+      <rect x="308" y="1162" width="158" height="58" rx="9" fill="#fcbe6f" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="387" y="1187" text-anchor="middle" class="label">Money Encoder</text>
+      <text x="387" y="1206" text-anchor="middle" class="tiny muted">American odds → p</text>
+    </g>
+
+    <rect x="512" y="1020" width="28" height="178" rx="5" fill="#c5dfb4" stroke="#5f9368" stroke-width="1.3"/>
+    <text x="526" y="1009" text-anchor="middle" class="micro muted">t</text>
+    <rect x="556" y="1020" width="28" height="178" rx="5" fill="#8faadc" stroke="#4e79b9" stroke-width="1.3"/>
+    <text x="570" y="1009" text-anchor="middle" class="micro muted">e</text>
+    <rect x="600" y="1020" width="28" height="178" rx="5" fill="#f8caac" stroke="#d88a25" stroke-width="1.3"/>
+    <text x="614" y="1009" text-anchor="middle" class="micro muted">m</text>
+
+    <path d="M466 1039 L509 1039" class="talent-line"/>
+    <path d="M466 1115 L553 1115" class="expert-line"/>
+    <path d="M466 1191 L597 1191" class="money-line"/>
+
+    <g filter="url(#tinyShadow)">
+      <rect x="672" y="1034" width="162" height="110" rx="11" fill="#fffaf2" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="753" y="1062" text-anchor="middle" class="label">Tri-Signal</text>
+      <text x="753" y="1083" text-anchor="middle" class="label">Fusion</text>
+      <text x="753" y="1111" text-anchor="middle" class="tiny muted">blend / authority zones</text>
+      <text x="753" y="1129" text-anchor="middle" class="tiny muted">top picks odds anchored</text>
+    </g>
+    <path d="M630 1089 L669 1089" class="arrow"/>
+
+    <g transform="translate(925 1089)" filter="url(#tinyShadow)">
+      <polygon points="0,-62 73,0 0,62 -73,0" fill="#fadde0" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="0" y="-10" text-anchor="middle" class="small">Divergence</text>
+      <text x="0" y="9" text-anchor="middle" class="small">Gate</text>
+      <text x="0" y="30" text-anchor="middle" class="micro muted">axis1 / axis2</text>
+    </g>
+    <path d="M834 1089 L849 1089" class="arrow"/>
+
+    <text x="790" y="1182" class="tiny muted">if aligned: high-confidence lock</text>
+    <text x="790" y="1201" class="tiny muted">if divergent: LLM reasoning + audit note</text>
+
+    <!-- GM latent encoder -->
+    <rect x="1018" y="960" width="255" height="265" rx="14" fill="#fff7e7" opacity="0.78"/>
+    <rect x="1018" y="960" width="255" height="265" rx="14" class="dash-orange"/>
+    <text x="1146" y="988" text-anchor="middle" class="label">GM Latent Encoder</text>
+    <g filter="url(#tinyShadow)">
+      <rect x="1055" y="1020" width="180" height="38" rx="7" fill="#eff5fb" stroke="#1f2328" stroke-width="1.5"/>
+      <text x="1145" y="1044" text-anchor="middle" class="small">Team Dossier</text>
+      <rect x="1055" y="1074" width="180" height="38" rx="7" fill="#e1eeda" stroke="#1f2328" stroke-width="1.5"/>
+      <text x="1145" y="1098" text-anchor="middle" class="small">Need Fit</text>
+      <rect x="1055" y="1128" width="180" height="38" rx="7" fill="#f9e3d5" stroke="#1f2328" stroke-width="1.5"/>
+      <text x="1145" y="1152" text-anchor="middle" class="small">Persona / Risk</text>
+      <rect x="1055" y="1182" width="180" height="38" rx="7" fill="#c9abd1" stroke="#1f2328" stroke-width="1.5"/>
+      <text x="1145" y="1206" text-anchor="middle" class="small">Inline GM ×30</text>
+    </g>
+    <path d="M998 1089 C1009 1089 1010 1040 1052 1040" class="arrow-thin"/>
+    <path d="M998 1089 C1009 1089 1010 1202 1052 1202" class="arrow-thin"/>
+
+    <!-- Preference bus -->
+    <g filter="url(#tinyShadow)">
+      <rect x="648" y="1260" width="336" height="58" rx="9" fill="#fff7e7" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="816" y="1283" text-anchor="middle" class="label">Preference Function Bus</text>
+      <text x="816" y="1302" text-anchor="middle" class="tiny muted">Pref = Talent + Need + Persona + Mock + Odds + Intel</text>
+    </g>
+    <path d="M925 1151 C925 1200 837 1208 837 1257" class="purple-line"/>
+    <path d="M1145 1220 C1145 1278 1017 1288 987 1288" class="arrow-thin"/>
+
+    <!-- Simulation module -->
+    <rect x="276" y="1346" width="998" height="250" rx="14" fill="url(#simGlow)" opacity="0.9"/>
+    <rect x="276" y="1346" width="998" height="250" rx="14" class="dash-olive"/>
+    <text x="775" y="1376" text-anchor="middle" class="label">Monte Carlo Simulation Backbone · Step Functions Distributed Map</text>
+
+    <g filter="url(#tinyShadow)">
+      <rect x="315" y="1420" width="120" height="92" rx="9" fill="#fcbe6f" stroke="#1f2328" stroke-width="1.8"/>
+      <use href="#iconChart" x="351" y="1430" width="50" height="40"/>
+      <text x="375" y="1485" text-anchor="middle" class="small">Odds Anchor</text>
+      <text x="375" y="1503" text-anchor="middle" class="micro muted">slots 1–4</text>
+
+      <rect x="475" y="1420" width="132" height="92" rx="9" fill="#eff5fb" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="541" y="1450" text-anchor="middle" class="small">Softmax</text>
+      <text x="541" y="1470" text-anchor="middle" class="small">Sampler</text>
+      <text x="541" y="1499" text-anchor="middle" class="micro muted">available players</text>
+
+      <rect x="647" y="1400" width="160" height="132" rx="10" fill="#c4dcf6" stroke="#1f2328" stroke-width="1.8"/>
+      <use href="#iconDice" x="698" y="1410" width="58" height="58"/>
+      <text x="727" y="1485" text-anchor="middle" class="small">Draft Kernel</text>
+      <text x="727" y="1504" text-anchor="middle" class="micro muted">slot 1 → 30 sequential</text>
+
+      <rect x="847" y="1400" width="160" height="132" rx="10" fill="#e1eeda" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="927" y="1437" text-anchor="middle" class="small">Distributed Map</text>
+      <text x="927" y="1462" text-anchor="middle" class="serif" font-size="28" font-weight="700">×1000</text>
+      <text x="927" y="1504" text-anchor="middle" class="micro muted">parallel simulations</text>
+
+      <rect x="1047" y="1420" width="156" height="92" rx="9" fill="#f9e3d5" stroke="#1f2328" stroke-width="1.8"/>
+      <text x="1125" y="1451" text-anchor="middle" class="small">Marginal Prob.</text>
+      <text x="1125" y="1472" text-anchor="middle" class="small">+ Hungarian</text>
+      <text x="1125" y="1499" text-anchor="middle" class="micro muted">no duplicate players</text>
+    </g>
+    <path d="M816 1318 L816 1343" class="purple-line"/>
+    <path d="M435 1466 L472 1466" class="arrow"/>
+    <path d="M607 1466 L644 1466" class="arrow"/>
+    <path d="M807 1466 L844 1466" class="arrow"/>
+    <path d="M1007 1466 L1044 1466" class="arrow"/>
+    <path d="M375 1420 C375 1356 816 1356 816 1343" class="money-line" opacity="0.55"/>
+
+    <g>
+      <circle cx="462" cy="1558" r="12" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+      <text x="462" y="1563" text-anchor="middle" class="micro">1</text>
+      <circle cx="496" cy="1558" r="12" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+      <text x="496" y="1563" text-anchor="middle" class="micro">2</text>
+      <circle cx="530" cy="1558" r="12" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+      <text x="530" y="1563" text-anchor="middle" class="micro">3</text>
+      <text x="569" y="1564" class="label">...</text>
+      <circle cx="622" cy="1558" r="12" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+      <text x="622" y="1563" text-anchor="middle" class="micro">30</text>
+      <text x="775" y="1563" text-anchor="middle" class="tiny muted">each simulation yields a full board; frequencies become calibrated confidence</text>
+    </g>
+
+    <!-- Outputs -->
+    <g id="outputs">
+      <path d="M1203 1466 C1262 1466 1262 1042 1325 1042" class="arrow"/>
+      <text x="1370" y="930" class="section-title">Delivery</text>
+      <g filter="url(#tinyShadow)">
+        <rect x="1328" y="970" width="224" height="90" rx="10" fill="#eff5fb" stroke="#1f2328" stroke-width="1.8"/>
+        <use href="#iconAPI" x="1344" y="988" width="58" height="48"/>
+        <text x="1444" y="1003" text-anchor="middle" class="label">API Gateway</text>
+        <text x="1444" y="1024" text-anchor="middle" class="tiny muted">+ Lambda output service</text>
+        <text x="1444" y="1043" text-anchor="middle" class="tiny muted">private repo / README</text>
+
+        <rect x="1328" y="1100" width="224" height="86" rx="10" fill="#e6f3dd" stroke="#1f2328" stroke-width="1.8"/>
+        <text x="1440" y="1129" text-anchor="middle" class="label">30-Pick Board</text>
+        <text x="1440" y="1151" text-anchor="middle" class="tiny muted">player + slot + confidence</text>
+        <text x="1440" y="1169" text-anchor="middle" class="tiny muted">expected-score optimized</text>
+
+        <rect x="1328" y="1218" width="224" height="86" rx="10" fill="#fcbe6f" stroke="#1f2328" stroke-width="1.8"/>
+        <text x="1440" y="1247" text-anchor="middle" class="label">Milestone Answers</text>
+        <text x="1440" y="1269" text-anchor="middle" class="tiny muted">props first via odds</text>
+        <text x="1440" y="1287" text-anchor="middle" class="tiny muted">simulation fallback</text>
+
+        <rect x="1328" y="1336" width="224" height="86" rx="10" fill="#fadde0" stroke="#1f2328" stroke-width="1.8"/>
+        <text x="1440" y="1365" text-anchor="middle" class="label">War Room Record</text>
+        <text x="1440" y="1387" text-anchor="middle" class="tiny muted">reasoning + citations</text>
+        <text x="1440" y="1405" text-anchor="middle" class="tiny muted">traceable audit trail</text>
+
+        <rect x="1328" y="1454" width="224" height="86" rx="10" fill="#c4dcf6" stroke="#1f2328" stroke-width="1.8"/>
+        <text x="1440" y="1483" text-anchor="middle" class="label">Pitch Assets</text>
+        <text x="1440" y="1505" text-anchor="middle" class="tiny muted">architecture / PPT / video</text>
+        <text x="1440" y="1523" text-anchor="middle" class="tiny muted">demo confidence charts</text>
+      </g>
+      <path d="M1440 1060 L1440 1097" class="arrow-thin"/>
+      <path d="M1440 1186 L1440 1215" class="arrow-thin"/>
+      <path d="M1440 1304 L1440 1333" class="arrow-thin"/>
+      <path d="M1440 1422 L1440 1451" class="arrow-thin"/>
+    </g>
+  </g>
+
+  <!-- Cross-cutting cloud-native plane -->
+  <g id="control-plane">
+    <rect x="78" y="1720" width="1444" height="178" rx="14" fill="#fffaf2" opacity="0.74"/>
+    <rect x="78" y="1720" width="1444" height="178" rx="14" class="dash-black"/>
+    <text x="800" y="1753" text-anchor="middle" class="section-title">Cross-Cutting Cloud Native Control Plane</text>
+
+    <g transform="translate(140 1778)" filter="url(#tinyShadow)">
+      <rect x="0" y="0" width="164" height="70" rx="9" fill="#f8caac" stroke="#1f2328" stroke-width="1.5"/>
+      <use href="#iconCloud" x="11" y="16" width="48" height="36"/>
+      <text x="98" y="28" text-anchor="middle" class="small">AWS CDK</text>
+      <text x="98" y="48" text-anchor="middle" class="tiny muted">IaC one-click deploy</text>
+    </g>
+    <g transform="translate(340 1778)" filter="url(#tinyShadow)">
+      <rect x="0" y="0" width="164" height="70" rx="9" fill="#d0cece" stroke="#1f2328" stroke-width="1.5"/>
+      <use href="#iconLock" x="12" y="9" width="46" height="48"/>
+      <text x="98" y="28" text-anchor="middle" class="small">IAM Least Priv.</text>
+      <text x="98" y="48" text-anchor="middle" class="tiny muted">Action Group roles</text>
+    </g>
+    <g transform="translate(540 1778)" filter="url(#tinyShadow)">
+      <rect x="0" y="0" width="164" height="70" rx="9" fill="#c9abd1" stroke="#1f2328" stroke-width="1.5"/>
+      <use href="#iconShield" x="14" y="8" width="42" height="50"/>
+      <text x="100" y="28" text-anchor="middle" class="small">Guardrails</text>
+      <text x="100" y="48" text-anchor="middle" class="tiny muted">prompt injection defense</text>
+    </g>
+    <g transform="translate(740 1778)" filter="url(#tinyShadow)">
+      <rect x="0" y="0" width="164" height="70" rx="9" fill="#eff5fb" stroke="#1f2328" stroke-width="1.5"/>
+      <use href="#iconDB" x="13" y="8" width="46" height="46"/>
+      <text x="100" y="28" text-anchor="middle" class="small">KMS + Secrets</text>
+      <text x="100" y="48" text-anchor="middle" class="tiny muted">encrypted data &amp; creds</text>
+    </g>
+    <g transform="translate(940 1778)" filter="url(#tinyShadow)">
+      <rect x="0" y="0" width="164" height="70" rx="9" fill="#e1eeda" stroke="#1f2328" stroke-width="1.5"/>
+      <use href="#iconChart" x="10" y="13" width="50" height="40"/>
+      <text x="101" y="28" text-anchor="middle" class="small">CloudWatch</text>
+      <text x="101" y="48" text-anchor="middle" class="tiny muted">logs / metrics / alarms</text>
+    </g>
+    <g transform="translate(1140 1778)" filter="url(#tinyShadow)">
+      <rect x="0" y="0" width="164" height="70" rx="9" fill="#fadde0" stroke="#1f2328" stroke-width="1.5"/>
+      <use href="#iconBrain" x="10" y="13" width="52" height="42"/>
+      <text x="103" y="28" text-anchor="middle" class="small">X-Ray + Trace</text>
+      <text x="103" y="48" text-anchor="middle" class="tiny muted">Bedrock agent trace</text>
+    </g>
+    <g transform="translate(1340 1778)" filter="url(#tinyShadow)">
+      <rect x="0" y="0" width="124" height="70" rx="9" fill="#c4dcf6" stroke="#1f2328" stroke-width="1.5"/>
+      <text x="62" y="28" text-anchor="middle" class="small">VPC</text>
+      <text x="62" y="48" text-anchor="middle" class="tiny muted">endpoints / TLS</text>
+    </g>
+  </g>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="22" y="1926" width="1556" height="78" rx="10" fill="#fffaf2" stroke="#8b8f94" stroke-width="1.4" stroke-dasharray="10 8"/>
+    <path d="M66 1964 H180" class="arrow-dashed"/>
+    <text x="193" y="1970" class="small">Stage I: data collection / knowledge grounding</text>
+    <path d="M444 1964 H548" class="arrow"/>
+    <text x="562" y="1970" class="small">Stage II: agent reasoning / simulation</text>
+    <path d="M824 1964 H892" class="talent-line"/>
+    <text x="904" y="1970" class="small">Talent</text>
+    <path d="M982 1964 H1050" class="expert-line"/>
+    <text x="1062" y="1970" class="small">Expert</text>
+    <path d="M1145 1964 H1213" class="money-line"/>
+    <text x="1225" y="1970" class="small">Money</text>
+    <path d="M1314 1964 H1382" class="live-line"/>
+    <text x="1394" y="1970" class="small">Live Intel</text>
+    <circle cx="70" cy="1994" r="12" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+    <text x="70" y="1999" text-anchor="middle" class="micro">C</text>
+    <text x="93" y="1999" class="tiny muted">Confidence = marginal frequency of final assigned pick</text>
+    <text x="800" y="1999" text-anchor="middle" class="tiny muted">All components are sourced from the v3 implementation document: Fargate, S3, DynamoDB, Bedrock KB, Bedrock multi-agent, Inline GM Agents, Step Functions, Lambda/API Gateway, security and observability controls.</text>
+  </g>
+
+  <!-- Bottom palette continuation -->
+  <g id="bottom-palette" filter="url(#tinyShadow)">
+    <rect x="48" y="2030" width="180" height="52" rx="12" fill="#e6f3dd" stroke="#9aad8f"/>
+    <text x="138" y="2063" text-anchor="middle" class="serif" font-size="22" font-weight="700">#E6F3DD</text>
+    <rect x="280" y="2030" width="180" height="52" rx="12" fill="#c5dfb4" stroke="#7fa46c"/>
+    <text x="370" y="2063" text-anchor="middle" class="serif" font-size="22" font-weight="700">#C5DFB4</text>
+    <rect x="512" y="2030" width="180" height="52" rx="12" fill="#c9abd1" stroke="#9873a4"/>
+    <text x="602" y="2063" text-anchor="middle" class="serif" font-size="22" font-weight="700">#C9ABD1</text>
+    <rect x="744" y="2030" width="180" height="52" rx="12" fill="#8faadc" stroke="#5875a7"/>
+    <text x="834" y="2063" text-anchor="middle" class="serif" font-size="22" font-weight="700">#8FAADC</text>
+    <rect x="976" y="2030" width="180" height="52" rx="12" fill="#f8caac" stroke="#bd7e52"/>
+    <text x="1066" y="2063" text-anchor="middle" class="serif" font-size="22" font-weight="700">#F8CAAC</text>
+    <rect x="1208" y="2030" width="180" height="52" rx="12" fill="#d0cece" stroke="#999"/>
+    <text x="1298" y="2063" text-anchor="middle" class="serif" font-size="22" font-weight="700">#D0CECE</text>
+  </g>
+</svg>

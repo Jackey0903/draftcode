@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EVA Matrix Glitch · ReDraft</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; overflow: hidden; background: #000; }
+    body {
+      color: #fff;
+      font-family: Inter, "SF Pro Display", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .fusion {
+      position: relative;
+      width: 100vw;
+      height: 100svh;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        radial-gradient(900px 520px at 68% 25%, rgba(0, 255, 102, .12), transparent 62%),
+        linear-gradient(90deg, rgba(0, 255, 102, .06), transparent 34%),
+        #020402;
+    }
+
+    #matrix {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -4;
+      opacity: .88;
+    }
+
+    .fusion::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -3;
+      background:
+        linear-gradient(90deg, rgba(0, 255, 102, .08) 1px, transparent 1px) 0 0 / 72px 100%,
+        linear-gradient(transparent 50%, rgba(0,0,0,.14) 50%) 0 0 / 100% 4px;
+      opacity: .72;
+      pointer-events: none;
+    }
+
+    .grain {
+      position: absolute;
+      inset: 0;
+      z-index: 7;
+      pointer-events: none;
+      opacity: .38;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.55  0 0 0 0 0.55  0 0 0 0.52 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+
+    .stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      padding: clamp(38px, 6vw, 86px);
+      animation: eva-tremor .18s steps(5) .82s 7;
+    }
+
+    .code {
+      position: absolute;
+      top: clamp(28px, 5vh, 58px);
+      left: clamp(34px, 5vw, 76px);
+      color: #37ff8b;
+      font: 900 clamp(12px, 1.2vw, 16px)/1 ui-monospace, Menlo, Monaco, Consolas, monospace;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(0, 255, 102, .65);
+      opacity: 0;
+      transform: translateY(-12px);
+      animation: chip-in .38s ease .12s forwards;
+    }
+
+    .wordmark {
+      position: absolute;
+      left: clamp(42px, 7vw, 110px);
+      top: 24%;
+      font-size: clamp(74px, 16vw, 228px);
+      line-height: .78;
+      letter-spacing: -.075em;
+      font-weight: 950;
+      color: #f4fff8;
+      white-space: nowrap;
+      opacity: 0;
+      filter: blur(16px);
+      transform: scale(1.55) rotate(-1.3deg);
+      text-shadow:
+        0 0 18px rgba(0, 255, 102, .62),
+        0 0 58px rgba(0, 255, 102, .26),
+        3px 0 rgba(255, 68, 115, .72),
+        -3px 0 rgba(98, 242, 255, .5);
+      animation: eva-glitch-pop .68s cubic-bezier(.18,.85,.25,1) .08s forwards;
+    }
+
+    .hanzi {
+      position: absolute;
+      top: 8%;
+      right: clamp(36px, 7vw, 118px);
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-family: "Hiragino Mincho ProN", "Songti SC", "STSong", "MingLiU", serif;
+      font-size: clamp(56px, 9vw, 150px);
+      line-height: .9;
+      font-weight: 900;
+      letter-spacing: -.08em;
+      color: #fff;
+      -webkit-text-stroke: .35px rgba(255,255,255,.42);
+      text-shadow:
+        0 0 8px rgba(255,255,255,.68),
+        0 0 28px rgba(0,255,102,.38),
+        2px 0 rgba(255,68,115,.5),
+        -2px 0 rgba(98,242,255,.35);
+      opacity: 0;
+      filter: blur(14px);
+      transform: scale(1.42) rotate(.9deg);
+      animation: eva-glitch-pop .62s cubic-bezier(.18,.85,.25,1) .28s forwards;
+    }
+
+    .small {
+      position: absolute;
+      left: clamp(48px, 7vw, 116px);
+      bottom: clamp(48px, 8vh, 94px);
+      font-family: "Hiragino Mincho ProN", "Songti SC", "STSong", "MingLiU", serif;
+      font-size: clamp(22px, 3.2vw, 48px);
+      font-weight: 900;
+      letter-spacing: .18em;
+      color: #fff;
+      opacity: 0;
+      filter: blur(12px);
+      transform: scale(1.35) rotate(-.8deg);
+      text-shadow:
+        0 0 10px rgba(255,255,255,.62),
+        0 0 26px rgba(0,255,102,.36);
+      animation: eva-pop .48s cubic-bezier(.18,.85,.25,1) .48s forwards;
+    }
+
+    .protocol {
+      position: absolute;
+      right: clamp(24px, 3.5vw, 54px);
+      bottom: clamp(30px, 5vh, 60px);
+      display: grid;
+      gap: 8px;
+      color: rgba(183, 255, 209, .72);
+      font: 800 12px/1 ui-monospace, Menlo, Monaco, Consolas, monospace;
+      letter-spacing: .16em;
+      text-align: right;
+      opacity: 0;
+      animation: chip-in .45s ease .7s forwards;
+    }
+    .protocol b { color: #37ff8b; text-shadow: 0 0 18px rgba(55,255,139,.72); }
+
+    .flash {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+      background: #fff;
+      opacity: 0;
+      animation: eva-flash .48s ease-out .06s forwards;
+    }
+
+    .cutline {
+      position: absolute;
+      inset: auto 0 19% 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,255,102,.72), transparent);
+      opacity: 0;
+      animation: cutline .7s ease .66s forwards;
+    }
+
+    @keyframes chip-in {
+      to { opacity: 1; transform: none; }
+    }
+
+    @keyframes eva-pop {
+      0%   { opacity: 0; transform: scale(1.45) rotate(-1deg); filter: blur(14px); }
+      55%  { opacity: 1; transform: scale(.92) rotate(.35deg); filter: blur(0); }
+      78%  { transform: scale(1.04) rotate(-.18deg); }
+      100% { opacity: 1; transform: scale(1) rotate(0); filter: blur(0); }
+    }
+
+    @keyframes eva-glitch-pop {
+      0%   { opacity: 0; transform: scale(1.55) rotate(-1.3deg); filter: blur(16px); }
+      48%  { opacity: 1; transform: scale(.9) translateX(-3px) rotate(.3deg); filter: blur(0) hue-rotate(20deg); }
+      58%  { transform: scale(1.06) translateX(4px) rotate(-.2deg); }
+      68%  { transform: scale(.98) translateX(-1px); }
+      100% { opacity: 1; transform: scale(1) translateX(0) rotate(0); filter: blur(0); }
+    }
+
+    @keyframes eva-flash {
+      0%   { opacity: .88; }
+      34%  { opacity: .14; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes eva-tremor {
+      0%, 100% { transform: translate(0, 0); }
+      20%      { transform: translate(-1.5px, 1px); }
+      40%      { transform: translate(1.5px, -1px); }
+      60%      { transform: translate(-1px, -1px); }
+      80%      { transform: translate(1px, 1.5px); }
+    }
+
+    @keyframes cutline {
+      from { opacity: 0; transform: scaleX(.05); }
+      to { opacity: 1; transform: scaleX(1); }
+    }
+
+    @media (max-width: 760px) {
+      .wordmark { top: 27%; left: 26px; font-size: clamp(62px, 19vw, 110px); }
+      .hanzi { right: 20px; font-size: clamp(44px, 12vw, 88px); }
+      .small { left: 28px; bottom: 70px; max-width: 70vw; line-height: 1.25; }
+      .protocol { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+      }
+      #matrix { opacity: .35; }
+    }
+  </style>
+</head>
+<body>
+  <section class="fusion" aria-label="EVA Matrix Glitch ReDraft fusion">
+    <canvas id="matrix" aria-hidden="true"></canvas>
+    <div class="grain"></div>
+    <div class="flash"></div>
+    <div class="stage">
+      <div class="code">T02 + EVA POP · DATA REPLAY MODE</div>
+      <div class="wordmark">REDRAFT</div>
+      <div class="hanzi">回到選秀夜</div>
+      <div class="small">且 看 此 處</div>
+      <div class="protocol">
+        <span>MARKET GAP <b>DETECTED</b></span>
+        <span>GM AGENTS <b>ONLINE</b></span>
+        <span>SIMULATION <b>LOCKED</b></span>
+      </div>
+      <div class="cutline"></div>
+    </div>
+  </section>
+
+  <script>
+    const canvas = document.getElementById("matrix");
+    const ctx = canvas.getContext("2d");
+    const chars = "01DRAFTGMLOCKSIM市场天赋顺位回到选秀夜";
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let drops = [];
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = canvas.clientWidth;
+      height = canvas.clientHeight;
+      canvas.width = Math.max(1, Math.floor(width * dpr));
+      canvas.height = Math.max(1, Math.floor(height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drops = Array.from({ length: Math.ceil(width / 18) }, () => Math.random() * -height);
+    }
+
+    function draw() {
+      ctx.fillStyle = "rgba(0, 4, 2, .15)";
+      ctx.fillRect(0, 0, width, height);
+      ctx.font = "15px ui-monospace, Menlo, Monaco, Consolas, monospace";
+      for (let i = 0; i < drops.length; i++) {
+        const x = i * 18;
+        const y = drops[i];
+        const hot = Math.random() > .986;
+        ctx.fillStyle = hot ? "#effff5" : "rgba(0, 255, 102, .72)";
+        ctx.fillText(chars[Math.floor(Math.random() * chars.length)], x, y);
+        drops[i] += 18 + Math.random() * 7;
+        if (drops[i] > height + 40 && Math.random() > .975) drops[i] = Math.random() * -160;
+      }
+      requestAnimationFrame(draw);
+    }
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("keydown", (event) => {
+      if (event.key.toLowerCase() === "r") location.reload();
+    });
+    resize();
+    draw();
+  </script>
+</body>
+</html>
