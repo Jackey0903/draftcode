@@ -103,6 +103,21 @@ every verdict + reasoning is persisted for audit. (gpt-5.5 sampling varies betwe
 runs; an earlier 124-pool run returned `talent_undervalued` for Peterson, so the
 cache is the source of truth for any given submission.)
 
+Innovation point 1 is upgraded to **tri-signal fusion with two-axis divergence**
+(v3). A third signal — **money** — is added via `draftcode odds`: it parses public
+sportsbook odds, converts American moneylines to implied probabilities, removes the
+vig (proportional de-vig, `p_i = q_i / Σq_j`), and takes a cross-book consensus. The
+money signal feeds the engine three ways: (a) an additive `w_money` term in the
+preference score; (b) a Monte Carlo **top-of-board anchor** so picks 1-4 marginal
+confidence is calibrated to the de-vigged market (`(1-λ)·softmax + λ·odds`, λ
+decaying down the board); (c) **axis-2 divergence** (mock consensus vs odds-implied
+landing) adjudicated by gpt-5.5 (`odds_sharp` / `mock_lagging` / `true_split`),
+cached in `divergence_odds_llm.json`. On the day's real ESPN/OddsShark odds the top
+expert and money signals were concordant (axis-2 fired 0 times — sharp, same-
+direction, high-confidence top), and the adjudicator only acts when they split
+(money usually leads, reacting to insider news faster than mocks). Everything is
+additive: with no odds applied the pipeline is byte-identical.
+
 Innovation point 2 lands as a deterministic LLM-once GM layer: `draftcode warroom`
 asks gpt-5.5 once per team for small candidate deltas, caches them in
 `outputs/llm/gm_preferences.json`, and `draftcode simulate` reads that static JSON

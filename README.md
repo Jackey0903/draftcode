@@ -95,7 +95,12 @@ prediction, pick explanations, gpt-5.5 divergence verdicts from `prospects.csv`,
 GM influence deltas, and red-team challenges into `outputs/audit.json` and
 `outputs/audit.md`: one replayable evidence file per prediction.
 
-## 创新点1: gpt-5.5 双信号背离
+## 创新点1: gpt-5.5 三信号融合 + 两轴背离
+
+三路信号——**天赋(数据)、专家(mock 共识)、资金(赔率 de-vig 隐含概率)**——融合,
+背离沿两条轴展开:**轴① 天赋×市场**(下方),**轴② 专家×资金**(见「资金信号」段)。
+
+### 轴①:天赋 vs 市场
 
 `draftcode ingest` now adjudicates large handbook talent-vs-market splits
 (`abs(divergence_gap) >= 8`) through a deterministic cache at
@@ -117,6 +122,35 @@ gpt-5.5 returned `true_split` for all 7: an auditable, conservative profile that
 nudges fused scores by confidence-weighted amounts rather than swinging ranks.
 (gpt-5.5 sampling varies run to run — an earlier run returned `talent_undervalued`
 for Peterson; the cache locks whichever adjudication is current.)
+
+## 资金信号 / 赔率 Agent(资金=最快的情报)
+
+`draftcode odds --odds-file ESPN=… --odds-file OS=… --apply` 把公开博彩赔率转成可融合
+的资金信号(仅作预测用,不构成下注建议):
+
+1. **美式赔率 → 隐含概率**:`-X → X/(X+100)`、`+X → 100/(X+100)`。
+2. **去水 de-vig(比例法)**:同一顺位市场内 `p_i = q_i / Σq_j`,消除抽水使 Σp=1。
+3. **跨书共识**:多书(ESPN/OddsShark…)同一(顺位,球员)取均值并按顺位归一。
+4. 写 `prospects.csv` 的 `odds_signal`(该球员最强去水隐含概率)/`odds_rank`(隐含落点)
+   + `odds_signals.csv`(每顺位去水分布,蒙特卡洛锚用)+ 审计 `outputs/odds/odds_NNN.json`。
+
+资金信号三处接入引擎:
+- **三信号偏好**:`preference.py` 在天赋/需求/人格/专家之外**叠加** `w_money·odds_signal`
+  (无赔率→0→预测逐字节不变;odds 只在顶部非零,天然实现「顶部资金主导」)。
+- **蒙特卡洛顶部锚**(§7.4g):顶部 1-4 顺位把采样分布按 λ 融合到去水赔率
+  `(1-λ)·softmax + λ·odds`,λ 随顺位衰减到 0 → **顶部置信度直接对齐市场**
+  (如 #1 AJ·迪班萨 ≈ 去水赔率 0.82)。
+- **轴②背离(专家 vs 资金)**:对同时有 mock 名次与赔率名次的球员算
+  `gap = market_rank − odds_rank`,`|gap|≥8` 触发 gpt-5.5 裁决(odds_sharp/mock_lagging/
+  true_split,缓存 `divergence_odds_llm.json`),写 `divergence_axis2.json`。实测当日 ESPN/
+  OddsShark 真实赔率:顶部专家与资金高度一致(轴②触发 0 次)——即「顶部锐利且同向、
+  高置信」,裁决器在二者分歧时才出手(钱通常领先)。
+
+实测真实赔率(ESPN + OddsShark,经 gpt-5.5 解析 + de-vig):AJ 迪班萨 0.82@1、威尔逊
+0.81@4、布泽尔 0.63@3、彼得森 0.62@2。无赔率文件时全链路与现状逐字节一致。
+
+> 抓取在引擎外:用 WebFetch/爬虫/人工把赔率文本注入 `data/raw/odds/`(本仓用 ESPN/
+> OddsShark 当日真实快照);云上对应 Fargate 容器爬虫(蓝图,见 `infra/`)。
 
 ## Real-time intel agent
 

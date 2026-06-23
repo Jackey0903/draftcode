@@ -33,11 +33,11 @@ MS_META = {
 }
 AUDIT_META = [
     ("picks_audited", "顺位全程审计", ""),
-    ("picks_with_explanation", "逐顺位 gpt-5.5 解释", "t"),
-    ("gm_influenced_picks", "GM 偏好影响顺位", "g"),
-    ("picks_diverging_from_most_likely", "偏离最可能人选", ""),
+    ("odds_backed_picks", "资金信号覆盖", "g"),
+    ("axis2_divergence_picks", "专家×资金背离", "r"),
+    ("picks_with_explanation", "gpt-5.5 解释", "t"),
+    ("gm_influenced_picks", "GM 偏好影响", "b"),
     ("red_team_challenges", "红队质询", "r"),
-    ("low_confidence_picks", "显式标注低置信", "b"),
 ]
 
 
