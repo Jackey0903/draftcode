@@ -166,6 +166,11 @@ def test_milestones_present() -> None:
     assert answered["Q4"].answer_kind == "pick"
     assert answered["Q6"].answer_kind == "category"
 
+    # Board-consistent answers (used by the answer card + frontend) are populated
+    # for every milestone so the submitted card never contradicts the board.
+    for milestone in answered.values():
+        assert isinstance(milestone.board_answer_display, str)
+
     for question_id in ["Q1", "Q2", "Q3", "Q5", "Q7"]:
         milestone = answered[question_id]
         assert milestone.expected is not None
