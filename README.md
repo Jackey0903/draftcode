@@ -1,315 +1,236 @@
-# DraftCode
+<div align="center">
 
-NBA draft prediction agent for the AWS DraftCode hackathon at AWS Summit Shanghai 2026.
+# 🏀 DraftCode · 选秀作战室
 
-## Current readiness
+**一座融合「天赋 · 专家 · 资金」三路信号、能自我推演上千次的 NBA 选秀预测 Agent**
 
-Last checked: 2026-06-23 Shanghai time.
+*我们没有训练一个预测模型，而是重建了一座拥有 30 位独立人格 GM 的选秀作战室——它追踪钱的流向，把信号间的背离变成 alpha，并为每个顺位给出带置信度、可解释、可审计的预测。*
 
-| Area | Status | Notes |
-| --- | --- | --- |
-| GitHub | Ready | `Jackey0903/draftcode` is `PRIVATE`; `main` is pushed. |
-| Local environment | Ready | Python 3.11, uv, Docker, AWS CLI, SAM CLI, GitHub CLI, Node/npm, and Kiro CLI are installed. |
-| AWS CLI | Local validation only this round | Authenticate with IAM/SSO before running deploy, upload, or Step Functions commands. |
-| Core agent scaffold | Ready | CLI, deterministic predictor, trace output, sample data, tests, API, Lambda handler, and HTML report exist. |
-| AWS architecture | Ready as blueprint | SAM validates S3, DynamoDB, API Gateway, Step Functions, Lambda container image, tracing, and Bedrock permissions. |
-| AWS tool innovation | Ready for roadshow | Evidence Ledger and Scenario Swarm are implemented in SAM; Explanation Firewall is documented. |
-| Data science innovation | Implemented (local) | Milestone-Aware Draft Twin Monte Carlo engine on **real 2026 data**: per-pick probability distributions, true confidence, **all 7 milestones (Q1-Q7)** with P10-P90 bands, and **Hungarian assignment** for a no-duplicate 30-pick board. |
-| Official event data | Local only | Official Excel/CSV/video files present locally (copied into `data/raw/official/`, gitignored) but intentionally not committed. |
-| Final scoring pipeline | Implemented (local) | Official normalizer (`ingest`), Q1-Q7 calculators, Hungarian-assigned 30-pick board, and answer-card writer (`answer`) all shipped; `outputs/answer_card.xlsx` generates end-to-end. |
-| Cloud deployment | Optional/in progress | `sam validate` passes; SAM workflow now invokes `simulate` and can read processed CSVs from S3 when configured. |
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![LLM](https://img.shields.io/badge/LLM-gpt--5.5-10a37f)
+![Engine](https://img.shields.io/badge/Monte%20Carlo-1500%20draws-f4a93b)
+![AWS](https://img.shields.io/badge/AWS-Serverless%20%2B%20SAM-FF9900?logo=amazonaws&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-75%20passing-brightgreen)
+![Lint](https://img.shields.io/badge/lint-ruff-261230)
+![Deps](https://img.shields.io/badge/core%20deps-zero-success)
 
-Immediate next build priorities:
+<sub>AWS Summit Shanghai 2026 · 「模拟球探」24h 黑客松 · 评分：代码 30% / 路演 30% / 预测 40%</sub>
 
-1. ✅ Normalize official files into `data/processed/` tables — `draftcode ingest` / `make ingest`.
-2. ✅ Q1-Q7 milestone calculators from the official answer template — computed inside the Monte Carlo engine on real combine fields.
-3. ✅ Generate the final answer workbook — `draftcode answer` / `make answer` writes `outputs/answer_card.xlsx` (30-pick board + Q1-Q7).
-4. ✅ Monte Carlo scenario simulation with Hungarian assignment — `draftcode simulate` / `make simulate`.
-5. Next: enrich production signals and deploy the SAM stack.
+</div>
 
-## Quick start
+---
 
-```bash
-make install
-make test
-make predict
-make simulate
-make validate-sample
-make report
+## 📌 这是什么
+
+DraftCode 把 2026 NBA 选秀预测当成一场**博弈**而非一道有标准答案的题：
+
+- **不为「整张名单全对」优化**（概率≈0），而为**每个顺位的期望得分**优化。
+- **以市场为锚、天赋为调整项**；市场再分两层——**专家（mock）+ 资金（赔率）**。
+- 在**信号背离处**用 gpt-5.5 深度推理破平局——分歧，就是 alpha。
+
+最终产物：一张可提交的**答题卡**（30 顺位 + 7 里程碑，每项带置信度）、一座**可审计**的作战室记录、一套**全 Serverless** 的 AWS 蓝图。
+
+---
+
+## ✨ 五大创新点
+
+| | 创新点 | 一句话 |
+|--|--|--|
+| 🥇 | **三信号融合 + 两轴背离** | 天赋×专家×资金三路融合；轴①天赋vs市场、轴②专家vs资金背离触发 gpt-5.5 裁决。**钱是最快的情报。** |
+| 🥈 | **30 位独立人格 GM** | 每队一个带「决策 DNA」的 GM Agent（顺位/缺口/人格/时间线）；一份模板，运行时注入 30 套人格。 |
+| 🥉 | **蒙特卡洛作战室** | 自我推演 1500 次→每顺位概率分布=诚实置信度；**顶部以去水赔率为采样锚**；同批模拟顺手答 7 道里程碑。 |
+| 🏅 | **实时情报 + 资金线移动** | 锁定前扫描新闻与赔率漂移，抓最后 48h 变化并重跑（字母哥交易已落地验证）。 |
+| 🎖 | **红队 + 全程可审计** | 魔鬼代言人 Agent 挑战共识；每个预测产出可复现的证据档（数据/解释/背离/赔率来源）。 |
+
+---
+
+## 🧠 核心：三信号融合管线
+
+```mermaid
+flowchart TD
+    T["🧬 天赋信号<br/>手册速率指标 / 体测"]:::sig
+    E["📋 专家信号<br/>多源 mock 共识"]:::sig
+    M["💰 资金信号<br/>赔率 de-vig 隐含概率"]:::sig
+    T & E & M --> F{"三信号融合 + 两轴背离<br/>gpt-5.5 在分歧处破平局"}
+    F --> P["30 GM 偏好函数<br/>w·(天赋+需求+人格+专家+资金)"]
+    P --> MC["蒙特卡洛 ×1500<br/>顶部 1-4 顺位锚定去水赔率"]
+    MC --> B["🎯 匈牙利指派<br/>30 顺位 + 边际概率(置信度)"]
+    MC --> Q["📐 7 里程碑<br/>与最终板自洽"]
+    B & Q --> A["📋 答题卡 answer_card.xlsx"]
+    B & Q --> AU["🔍 审计追踪 audit.json/md"]
+    classDef sig fill:#141c30,stroke:#f4a93b,color:#eef2fb;
 ```
 
-The sample run writes:
+> LLM 只在产偏好函数/裁决背离时**跑一次**（LLM-once）；蒙特卡洛是纯算力采样，1500 次轻松跑完——昂贵推理与廉价采样彻底解耦。
 
-- `outputs/predictions.csv`
-- `outputs/trace.json`
-- `outputs/twin.json` (Monte Carlo Draft Twin: per-pick distributions + milestone answers)
-- `outputs/report.html`
+---
 
-Sample data under `data/sample/` is synthetic and only verifies the pipeline. Replace it with Team Portal and public NBA data during the competition.
-
-## Local gpt-5.5 warroom
-
-Bedrock is not required for the local agent path. DraftCode calls gpt-5.5 through the
-local Codex CLI reverse proxy:
+## 🚀 快速开始
 
 ```bash
-codex exec --skip-git-repo-check --ephemeral -c sandbox_mode="read-only" -o <OUTFILE> "<PROMPT>"
+make install      # 安装(uv,零第三方核心依赖)
+make test         # 75 tests
+make simulate     # 蒙特卡洛 Draft Twin(样例数据)
 ```
 
-`src/draftcode/llm_client.py` wraps that command with standard-library
-`subprocess` and returns `None` on timeout, missing Codex, disabled LLM, or any
-non-zero exit. Set `DRAFTCODE_LLM_DISABLED=1` to force the deterministic fallback path.
-
-The local war-room pipeline is LLM-once: it writes JSON cache artifacts first, then
-the simulator reads the persisted GM deltas from `outputs/llm/gm_preferences.json`
-for a deterministic run. `draftcode simulate` reads that path by default through
-`--gm-preferences`; if the file is missing or invalid, it prints the disabled
-status and falls back to the pure deterministic dossier scorer.
+### 🏀 完整选秀预测流程（真实 2026 数据）
 
 ```bash
-draftcode warroom --data-dir data/processed --output-dir outputs/llm --draws 1000 --seed 42
+# 设置 gpt-5.5 网关(本地 codex 反代,或远程 EC2 网关)
+export DRAFTCODE_LLM_BASE_URL=http://<gateway>:8787  DRAFTCODE_LLM_API_KEY=<key>
 
-# CI/offline smoke path: no external LLM calls
-draftcode warroom --data-dir data/processed --output-dir outputs/llm --draws 1000 --seed 42 --offline
-
-# Replay the cached GM preferences without calling an LLM
-draftcode simulate --data-dir data/processed --output outputs/twin.json --gm-preferences outputs/llm/gm_preferences.json
+draftcode ingest  --source data/raw/official --out data/processed --divergence-llm   # ① 官方 107 参选人 + 轴①背离
+draftcode intel   --news-text "<交易新闻>" --apply                                    # ② 实时情报换签
+draftcode market  --mock-file CBS=… --mock-file SI=… --apply                          # ③ 专家共识(mock)
+draftcode odds    --odds-file ESPN=… --odds-file OS=… --apply                         # ④ 资金信号(赔率 de-vig)+ 轴②背离
+draftcode warroom --data-dir data/processed --output-dir outputs/llm                  # ⑤ 30 GM 偏好(gpt-5.5)
+draftcode simulate --data-dir data/processed --output outputs/twin.json --draws 1500  # ⑥ 蒙特卡洛 + 赔率锚
+draftcode answer  --data-dir data/processed --out outputs/answer_card.xlsx            # ⑦ 答题卡
+draftcode audit   # ⑧ 合并预测+解释+背离+GM+红队 → 可审计证据档
 ```
 
-Artifacts:
+> **向后兼容**：任一信号源缺失时优雅降级；不跑 `odds` 时全链路与纯天赋+专家路径**逐字节一致**。
 
-- `outputs/llm/gm_preferences.json`: 30 team GM-agent preference deltas.
-- `outputs/llm/explanations.json`: pick-by-pick war-room notes.
-- `outputs/llm/redteam.json`: board and milestone challenges.
+---
 
-GM preference scoring is intentionally conservative: for each team-prospect edge,
-the Monte Carlo engine computes the deterministic dossier `preference_score`, then
-adds `0.50 * gm_delta`, where `gm_delta` is clamped to `[-0.08, 0.08]`. The trace
-records the raw delta, fixed weight, and weighted score adjustment for audit.
+## 📊 最终预测（官方板 + 已确认交易）
 
-## 创新点5: 红队 + 可审计追踪
+<table>
+<tr><td valign="top">
 
-`draftcode warroom` produces the red-team challenge artifact at
-`outputs/llm/redteam.json`. `draftcode audit` then consolidates the Draft Twin
-prediction, pick explanations, gpt-5.5 divergence verdicts from `prospects.csv`,
-GM influence deltas, and red-team challenges into `outputs/audit.json` and
-`outputs/audit.md`: one replayable evidence file per prediction.
+| # | 球队 | 球员 |
+|--:|--|--|
+| 1 | Washington Wizards | AJ 迪班萨 |
+| 2 | Utah Jazz | 达林 彼得森 |
+| 3 | Memphis Grizzlies | 卡梅隆 布泽尔 |
+| 4 | Chicago Bulls | 凯莱布 威尔逊 |
+| 5 | Los Angeles Clippers | 基顿 瓦格勒 |
+| 6 | Brooklyn Nets | 达柳斯 阿卡夫 |
+| 7 | Sacramento Kings | 纳撒尼尔 阿门特 |
+| 13 | **Milwaukee Bucks** ⟵ 字母哥交易 | 以赛亚 埃文斯 |
 
-## 创新点1: gpt-5.5 三信号融合 + 两轴背离
+</td><td valign="top">
 
-三路信号——**天赋(数据)、专家(mock 共识)、资金(赔率 de-vig 隐含概率)**——融合,
-背离沿两条轴展开:**轴① 天赋×市场**(下方),**轴② 专家×资金**(见「资金信号」段)。
+**7 里程碑**（与上面这张板自洽）
 
-### 轴①:天赋 vs 市场
+| 题 | 答案 |
+|--|--|
+| Q1 长臂展(4-14 顺位) | 3 人 |
+| Q2 助跑弹跳前 3 入首轮 | 2 人 |
+| Q3 首轮中锋总数 | 2 个 |
+| Q4 首个中锋落点 | 第 11 顺位 |
+| Q5 国际球员总数 | 3 人 |
+| Q6 贡献最多机构 | 密歇根大学 |
+| Q7 手掌长度前 5 入首轮 | 2 人 |
 
-`draftcode ingest` now adjudicates large handbook talent-vs-market splits
-(`abs(divergence_gap) >= 8`) through a deterministic cache at
-`data/processed/divergence_llm.json`. If gpt-5.5 returns a verdict, ingest blends
-the model's existing rule weight with `adjusted_market_weight` by `confidence`,
-then writes the verdict, weight, confidence, and reasoning into `prospects.csv`
-and `divergence.json`. Use `--no-divergence-llm` for a byte-for-byte deterministic
-fallback with the original rule fusion.
+</td></tr>
+</table>
 
-Peterson example: 达林·彼得森 is flagged because `talent_rank=14` sits far below
-`market_rank=1.5`, so the deterministic rule labels the split `market_hype`. Given
-only neutral measurables (the rule verdict is never leaked into the prompt),
-gpt-5.5 adjudicates on the merits. Verdicts are sampled once and cached in
-`divergence_llm.json` for determinism; in the committed run gpt-5.5 returned
-`true_split` for Peterson (market weight 0.52, confidence 0.63) — it found both the
-efficient-big-guard talent case and the market's enthusiasm credible, so it blends
-near-evenly instead of overriding either signal. The run flagged 7 large splits and
-gpt-5.5 returned `true_split` for all 7: an auditable, conservative profile that
-nudges fused scores by confidence-weighted amounts rather than swinging ranks.
-(gpt-5.5 sampling varies run to run — an earlier run returned `talent_undervalued`
-for Peterson; the cache locks whichever adjudication is current.)
+> 持签球队对齐官方 30 队名单；**字母哥交易经核实为官方**（NBA.com/ESPN，密尔沃基获第 13 签）。完整 30 顺位见 `outputs/answer_card.xlsx`。
 
-## 资金信号 / 赔率 Agent(资金=最快的情报)
+---
 
-`draftcode odds --odds-file ESPN=… --odds-file OS=… --apply` 把公开博彩赔率转成可融合
-的资金信号(仅作预测用,不构成下注建议):
+## 💰 资金信号 · 赔率 Agent（v3 新核心）
 
-1. **美式赔率 → 隐含概率**:`-X → X/(X+100)`、`+X → 100/(X+100)`。
-2. **去水 de-vig(比例法)**:同一顺位市场内 `p_i = q_i / Σq_j`,消除抽水使 Σp=1。
-3. **跨书共识**:多书(ESPN/OddsShark…)同一(顺位,球员)取均值并按顺位归一。
-4. 写 `prospects.csv` 的 `odds_signal`(该球员最强去水隐含概率)/`odds_rank`(隐含落点)
-   + `odds_signals.csv`(每顺位去水分布,蒙特卡洛锚用)+ 审计 `outputs/odds/odds_NNN.json`。
-
-资金信号三处接入引擎:
-- **三信号偏好**:`preference.py` 在天赋/需求/人格/专家之外**叠加** `w_money·odds_signal`
-  (无赔率→0→预测逐字节不变;odds 只在顶部非零,天然实现「顶部资金主导」)。
-- **蒙特卡洛顶部锚**(§7.4g):顶部 1-4 顺位把采样分布按 λ 融合到去水赔率
-  `(1-λ)·softmax + λ·odds`,λ 随顺位衰减到 0 → **顶部置信度直接对齐市场**
-  (如 #1 AJ·迪班萨 ≈ 去水赔率 0.82)。
-- **轴②背离(专家 vs 资金)**:对同时有 mock 名次与赔率名次的球员算
-  `gap = market_rank − odds_rank`,`|gap|≥8` 触发 gpt-5.5 裁决(odds_sharp/mock_lagging/
-  true_split,缓存 `divergence_odds_llm.json`),写 `divergence_axis2.json`。实测当日 ESPN/
-  OddsShark 真实赔率:顶部专家与资金高度一致(轴②触发 0 次)——即「顶部锐利且同向、
-  高置信」,裁决器在二者分歧时才出手(钱通常领先)。
-
-实测真实赔率(ESPN + OddsShark,经 gpt-5.5 解析 + de-vig):AJ 迪班萨 0.82@1、威尔逊
-0.81@4、布泽尔 0.63@3、彼得森 0.62@2。无赔率文件时全链路与现状逐字节一致。
-
-> 抓取在引擎外:用 WebFetch/爬虫/人工把赔率文本注入 `data/raw/odds/`(本仓用 ESPN/
-> OddsShark 当日真实快照);云上对应 Fargate 容器爬虫(蓝图,见 `infra/`)。
-
-## Real-time intel agent
-
-The intel agent turns externally fetched news text into draft-order and team-need
-updates. Fetching is intentionally outside the engine: WebFetch, crawlers, APIs,
-or a manual operator inject text through `--news-text` or `--news-file`.
-
-The flow is capture -> structure -> apply:
-
-1. Capture: external tooling supplies the news excerpt and source label.
-2. Structure: gpt-5.5 extracts `picks_moved_2026_round1`, `team_needs_delta`, and
-   `affects_our_draft_order` into an `IntelReport`.
-3. Apply: DraftCode previews by default, writes `draft_order.csv`/`team_needs.csv`
-   only with `--apply`, and always writes `outputs/intel/intel_<seq>.json`.
-
-Validated Giannis case: "Heat acquire Giannis from Bucks; Milwaukee gets the
-No. 13 pick in 2026" normalizes to `PickMove(13, "MIA", "MIL")`. Dry-run previews
-pick 13 as MIA -> MIL; `--apply` writes `Milwaukee Bucks,MIL`, sets
-`via_trade=true`, and preserves `original_team=MIA`.
-
-```bash
-draftcode intel --news-text "Heat acquire Giannis from Bucks; Milwaukee gets the No. 13 pick in 2026"
-draftcode intel --news-text "Heat acquire Giannis from Bucks; Milwaukee gets the No. 13 pick in 2026" --apply
-```
-
-Full architecture notes: `docs/intel_agent.md`.
-
-## Market capture agent
-
-The market agent turns multiple externally fetched mock drafts into consensus
-market signals. Fetching remains outside DraftCode: WebFetch, crawlers, APIs, or
-manual operators inject plain text files, and the engine only extracts, aggregates,
-previews, applies, and audits.
-
-The flow is capture -> extract -> aggregate -> apply:
-
-1. Capture: external tooling saves ESPN/CBS/Ringer/NBA.com mock text.
-2. Extract: gpt-5.5 maps English player names to the Chinese `prospects.csv`
-   name pool and returns `player -> projected_pick` JSON per source.
-3. Aggregate: DraftCode averages each matched player across sources into
-   `consensus_pick`, `n_sources`, and source labels.
-4. Apply: DraftCode previews by default, writes `prospects.csv.market_rank` and
-   rewrites `mock_signals.csv` only with `--apply`, and always writes
-   `outputs/market/market_<seq>.json`.
-
-```bash
-draftcode market --mock-file ESPN=data/raw/mocks/espn.txt --mock-file CBS=data/raw/mocks/cbs.txt
-draftcode market --mock-dir data/raw/mocks --apply
-```
-
-If an LLM call fails or returns invalid JSON, that source is skipped. If all
-sources fail, the report is empty and `--apply` leaves existing CSV files
-untouched.
-
-Full architecture notes: `docs/market_agent.md`.
-
-## Environment
-
-```bash
-scripts/check_env.sh
-make sam-validate
-```
-
-Required manual logins:
-
-- `gh auth login`
-- `aws configure sso` or `aws configure`
-- Start Docker Desktop before SAM local builds.
-
-AWS deployment helpers:
-
-```bash
-make sam-pull-base
-make sam-build
-```
-
-## S3 simulation data flow
-
-The single-Lambda cloud path remains available:
+`draftcode odds` 把公开博彩赔率转成可融合的资金信号（仅作预测用，不构成下注建议）：
 
 ```text
-draftcode ingest -> data/processed -> draftcode upload-data -> S3 processed prefix
-  -> Step Functions GeneratePrediction -> Lambda downloads four CSVs from S3
-  -> simulate -> S3 runs/<run_id>/twin.json + DynamoDB run summary
+美式赔率 → 隐含概率:  -X → X/(X+100)   |   +X → 100/(X+100)
+去水 de-vig (比例法):  p_i = q_i / Σq_j   (同一顺位市场,消抽水使 Σp=1)
+跨书共识:             多书同一(顺位,球员)取均值并按顺位归一
 ```
 
-Required processed inputs are `prospects.csv`, `draft_order.csv`, `team_needs.csv`, and `mock_signals.csv`. If `DRAFTCODE_DATA_S3_PREFIX` is empty, or if boto3/AWS access is unavailable locally, Lambda falls back to `DRAFTCODE_DATA_DIR`.
+**三处接入引擎**：① 偏好叠加 `w_money·odds_signal`；② 蒙特卡洛**顶部置信度锚定市场** `(1-λ)·softmax + λ·odds`（λ 随顺位衰减）；③ **轴②背离**（专家 mock vs 资金 odds）`|gap|≥8` 触发 gpt-5.5 裁决。
 
-Scenario Swarm uses the same data prefix but fans out Monte Carlo work with Step Functions Distributed Map:
+实测真实赔率（ESPN + OddsShark，gpt-5.5 解析 + de-vig）：**AJ 迪班萨 0.82@1 · 威尔逊 0.81@4 · 布泽尔 0.63@3 · 彼得森 0.62@2**。当日顶部专家与资金高度同向（轴②触发 0 次=高置信锁定），裁决器仅在二者分歧时出手。
+
+---
+
+## 🤖 Agent 一览
+
+| Agent | 命令 | 职责 | 产物 |
+|--|--|--|--|
+| 官方归一化 | `ingest` | 107 参选人 + 体测/手册 + 轴①背离(gpt-5.5) | `prospects.csv` |
+| 实时情报 | `intel` | 新闻→换签/缺口(gpt-5.5)，字母哥案例验证 | `draft_order.csv` |
+| 专家市场 | `market` | 多源 mock→共识(中英文名匹配) | `mock_signals.csv` |
+| 资金赔率 | `odds` | 赔率→de-vig 隐含概率 + 轴②背离 | `odds_signals.csv` |
+| 30 GM 作战室 | `warroom` | 30 队人格偏好 + 解释 + 红队(LLM-once) | `outputs/llm/*.json` |
+| 蒙特卡洛孪生 | `simulate` | 1500 次采样 + 赔率锚 + 匈牙利指派 | `twin.json` |
+| 答题卡 / 审计 | `answer` / `audit` | 提交卡 + 可复现证据档 | `answer_card.xlsx` `audit.md` |
+
+> 所有吃外部内容的抓取都在**引擎外**（WebFetch/爬虫/人工注入文本）；引擎只做结构化、聚合、应用、审计——干净、确定、可复现。
+
+---
+
+## ☁️ AWS 云原生工程
+
+全 Serverless（零 EC2 业务逻辑）+ Serverless 容器 + IaC + 全链路安全 + Well-Architected。
+
+<details>
+<summary><b>展开：架构映射 / Scenario Swarm / 部署命令</b></summary>
+
+| 层 | 服务 |
+|--|--|
+| 采集(容器) | EventBridge + **Fargate**(headless 爬虫，含赔率) + ECR |
+| 存储 | S3(KMS) · DynamoDB 台账(KMS) |
+| 编排/模拟 | **Step Functions Distributed Map**(1000+ 蒙特卡洛并行) |
+| 计算 | Lambda 容器镜像 |
+| 输出 | API Gateway + Lambda |
+| 安全 | KMS CMK · Secrets Manager · 最小权限 IAM · Bedrock Guardrails(条件) |
+| IaC | AWS SAM(`infra/template.yaml`，`sam validate --lint` 通过) |
+
+**Scenario Swarm**（Distributed Map 并行蒙特卡洛）：
 
 ```text
-ScenarioSwarmWorkflow
-  -> PrepareRun Lambda action=prepare_swarm creates run_id and N shard payloads
-  -> Distributed Map action=simulate_shard writes runs/<run_id>/shards/<index>.json
-  -> Aggregate Lambda action=aggregate reads all shard JSON, merges raw counts
-  -> S3 runs/<run_id>/twin.json + DynamoDB run summary
+PrepareRun → N 个分片 payload → Distributed Map(action=simulate_shard)
+  → 各分片写 runs/<run_id>/shards/<i>.json → Aggregate 合并 → twin.json + DynamoDB
 ```
+每分片独立随机流 `seed + shard_index*1000003`；单分片(index 0)与本地 `run()` 逐字节等价。
 
-Each shard uses an independent deterministic random stream:
-`seed + shard_index * 1000003`. A single shard with `shard_index=0` is byte-for-byte equivalent to the original `run()` output for the same draw count.
-
-Upload processed data after the stack creates the bucket:
-
+**部署**：
 ```bash
-draftcode upload-data --source data/processed --bucket <bucket> --prefix processed
-# or
+make sam-deploy STACK_NAME=draftcode AWS_REGION=us-east-1 DATA_S3_PREFIX=processed
 make upload-data S3_BUCKET=<bucket> DATA_S3_PREFIX=processed
+aws stepfunctions start-execution --state-machine-arn <PredictionWorkflowArn> --region us-east-1
 ```
+</details>
 
-After AWS authentication, deploy and run in this order:
+---
 
-```bash
-make install-full
-make ingest
-SAM_CLI_TELEMETRY=0 sam validate --template-file infra/template.yaml --region us-east-1
-make sam-deploy STACK_NAME=draftcode AWS_REGION=us-east-1 DATA_S3_PREFIX=processed DRAFTCODE_DRAWS=1000 DRAFTCODE_SEED=42
-export DRAFTCODE_S3_BUCKET=$(aws cloudformation describe-stacks --stack-name draftcode --region us-east-1 --query "Stacks[0].Outputs[?OutputKey=='DraftDataBucketName'].OutputValue" --output text)
-make upload-data S3_BUCKET="$DRAFTCODE_S3_BUCKET" DATA_S3_PREFIX=processed
-export DRAFTCODE_WORKFLOW_ARN=$(aws cloudformation describe-stacks --stack-name draftcode --region us-east-1 --query "Stacks[0].Outputs[?OutputKey=='PredictionWorkflowArn'].OutputValue" --output text)
-aws stepfunctions start-execution --state-machine-arn "$DRAFTCODE_WORKFLOW_ARN" --region us-east-1
+## 🛠️ 技术栈
+
+`Python 3.11` · `uv` · `Typer`/`Rich` CLI · **核心引擎零第三方依赖**（`openpyxl` 仅在 official/answer 层）
+`gpt-5.5`（经本地 Codex 反代 / EC2 OpenAI 兼容网关，**非 Bedrock**——账号地区受限的真实约束）
+算法：赔率 de-vig · softmax 温度采样 · 蒙特卡洛 · **匈牙利指派** · 置信度加权融合
+
+---
+
+## 📁 仓库结构
+
+<details>
+<summary>展开</summary>
+
+```text
+src/draftcode/
+  official.py     官方数据归一化 + 轴①背离
+  odds.py         赔率聚合 Agent(de-vig)         intel.py / market.py  情报/专家 Agent
+  divergence.py   gpt-5.5 两轴背离裁决            preference.py         三信号偏好函数
+  simulate.py     蒙特卡洛 Draft Twin(+赔率锚)    warroom.py            30 GM 编排
+  answer.py       答题卡 writer                  audit.py              可审计追踪合并器
+  llm_client.py   gpt-5.5 客户端                 cli.py                命令行入口
+infra/template.yaml   AWS SAM 蓝图
+scripts/build_frontend.py  前端生成器(twin+audit → web/draft_room.html)
+docs/                 架构 / 创新策略 / AWS 计分 / Agent 设计
 ```
+</details>
 
-Trigger Scenario Swarm after the same authenticated deploy and data upload:
+---
 
-```bash
-export SCENARIO_SWARM_WORKFLOW_ARN=$(aws cloudformation describe-stacks --stack-name draftcode --region us-east-1 --query "Stacks[0].Outputs[?OutputKey=='ScenarioSwarmWorkflowArn'].OutputValue" --output text)
-aws stepfunctions start-execution \
-  --state-machine-arn "$SCENARIO_SWARM_WORKFLOW_ARN" \
-  --region us-east-1 \
-  --input '{"total_draws":1000,"shard_count":10}'
-```
+## ⚖️ 合规与诚实说明
 
-The default swarm configuration is 10 shards with `total_draws // shard_count` draws per shard. With the defaults, that is 10 parallel shards x 100 draws = 1000 aggregated draws.
+- 公开赔率**仅作预测信号（隐含概率）**使用，不构成、不提供任何下注建议——标准概率预测方法。
+- 交易/赔率/mock 等第三方新闻**真假自行核验**（字母哥交易已 web 核实=官方）。
+- gpt-5.5 采样跨 run 有波动，**缓存即任一次提交的唯一真值**；文档结果均按实测如实标注。
+- 球员池严格 = 官方 107 参选人名单；不预测不可能被选的人。
 
-## Project map
-
-- `src/draftcode/`: prediction agent, CLI, API, dashboard, Lambda handler, Monte Carlo Draft Twin (`simulate.py`), official-data normalizer (`official.py`), answer-card writer (`answer.py`).
-- `data/raw/official/`: official 2026 source workbooks (gitignored); `data/processed/`: normalized tables from `ingest`.
-- `data/sample/`: synthetic smoke-test CSVs.
-- `data/reference/`: small verified reference anchors from training notes.
-- `infra/template.yaml`: AWS SAM serverless API template, including the single-run workflow and the Distributed Map Scenario Swarm workflow.
-- `docs/competition_analysis.md`: contest analysis and hard constraints.
-- `docs/prep_checklist.md`: account, tooling, and submission checklist.
-- `docs/race_day_runbook.md`: 24-hour execution plan.
-- `docs/nba_model_strategy.md`: data science strategy for NBA draft prediction.
-- `docs/architecture.md`: AWS serverless architecture and roadshow talk track.
-- `docs/aws_scorecard.md`: mapping from AWS scoring language to concrete implementation.
-- `docs/innovation_strategy.md`: Milestone-Aware Draft Twin concept and build priorities.
-- `docs/intel_agent.md`: real-time trade intel extraction, application, and audit flow.
-- `docs/market_agent.md`: multi-source mock draft market extraction and signal application flow.
-- `docs/aws_tool_innovation.md`: AWS tool-level innovation patterns.
-
-## Competition commands
-
-```bash
-# 1) Normalize official 2026 workbooks -> data/processed/
-draftcode ingest --source data/raw/official --out data/processed
-# 2) Monte Carlo Draft Twin: distributions + Q1-Q7 milestones + Hungarian board
-draftcode simulate --data-dir data/processed --output outputs/twin.json --draws 1000 --seed 42
-# 3) Write the submittable answer card (30-pick board + 7 milestones)
-draftcode answer --data-dir data/processed --template data/raw/official/answer_card_template.xlsx --out outputs/answer_card.xlsx --draws 1000 --seed 42 --team-id Team01
-```
+<div align="center"><sub>Built for AWS Summit Shanghai 2026 · 模拟球探</sub></div>
