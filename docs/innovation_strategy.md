@@ -92,14 +92,16 @@ or `true_split`, persists the verdict in `divergence_llm.json`, and uses
 `adjusted_market_weight`. The no-cache/no-LLM path keeps the original arithmetic.
 
 The concrete test case is 达林·彼得森: `talent_rank=14` versus `market_rank=1.5`,
-which the deterministic rule labels `market_hype`. From neutral measurables alone,
-gpt-5.5 returned `talent_undervalued` (the talent rank is too conservative for an
-efficient, high-usage big guard with credible playmaking), raised the market weight
-to 0.65 at confidence 0.64, and moved his consensus rank 5 → 4. The adjudicator is
-deliberately measured: it corrects the misclassification without discarding the
-talent model, so Peterson still lands behind the prospects that lead on both
-signals. The other six flagged splits all came back `true_split`, i.e. gpt-5.5
-declined to swing the stats-darlings hard — an auditable, conservative profile.
+which the deterministic rule labels `market_hype`. From neutral measurables alone
+(the rule verdict is never leaked into the prompt), gpt-5.5 adjudicates and is
+cached once for determinism. On the official 107-entrant pool it flagged 7 large
+splits and returned `true_split` for all 7 — including Peterson (market weight
+0.52, confidence 0.63), finding both the efficient-big-guard talent case and the
+market's enthusiasm credible. The adjudicator is deliberately conservative: it
+nudges fused scores by confidence-weighted amounts instead of swinging ranks, and
+every verdict + reasoning is persisted for audit. (gpt-5.5 sampling varies between
+runs; an earlier 124-pool run returned `talent_undervalued` for Peterson, so the
+cache is the source of truth for any given submission.)
 
 Innovation point 2 lands as a deterministic LLM-once GM layer: `draftcode warroom`
 asks gpt-5.5 once per team for small candidate deltas, caches them in

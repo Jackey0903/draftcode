@@ -102,6 +102,10 @@ class MilestoneAnswer:
     p90: float | None
     confidence: float | None
     detail: str
+    # Answer recomputed on the single assigned board so the submitted card and the
+    # public board never contradict each other; answer_display/expected keep the
+    # full Monte Carlo distribution view for audit.
+    board_answer_display: str = ""
 
 
 @dataclass(frozen=True)
@@ -332,20 +336,25 @@ class MonteCarloDraftTwin:
                 )
 
         picks = self._build_pick_distributions(pick_counters, total_draws)
+        assigned_picks = self._build_assigned_picks(
+            pick_counters,
+            prospect_counter,
+            total_draws,
+        )
+        milestones = self._attach_board_answers(
+            self._build_milestones(milestone_values),
+            assigned_picks,
+        )
         return TwinReport(
             config=replace(self.config, draws=total_draws),
             picks=picks,
-            assigned_picks=self._build_assigned_picks(
-                pick_counters,
-                prospect_counter,
-                total_draws,
-            ),
+            assigned_picks=assigned_picks,
             board=self._build_board(
                 prospect_counter,
                 prospect_team_counters,
                 total_draws,
             ),
-            milestones=self._build_milestones(milestone_values),
+            milestones=milestones,
             low_confidence_picks=[pick.pick for pick in picks if pick.low_confidence],
         )
 
@@ -679,6 +688,49 @@ class MonteCarloDraftTwin:
                 outlook.prospect_id,
             ),
         )
+
+    def _attach_board_answers(
+        self,
+        milestones: list[MilestoneAnswer],
+        assigned_picks: list[AssignedPick],
+    ) -> list[MilestoneAnswer]:
+        """Fill each milestone's board-consistent answer from the assigned board.
+
+        The submitted answer card and the public board must agree, so milestone
+        answers are recomputed on the single Hungarian-assigned board. The
+        ``answer_display``/``expected``/P10-P90 distribution view is preserved
+        untouched for the audit trail.
+        """
+        board_ids = [
+            pick.prospect_id
+            for pick in sorted(assigned_picks, key=lambda item: item.pick)
+        ]
+        definitions = {definition.id: definition for definition in self._milestones}
+        enriched: list[MilestoneAnswer] = []
+        for milestone in milestones:
+            definition = definitions.get(milestone.id)
+            if definition is None:
+                enriched.append(milestone)
+                continue
+            enriched.append(
+                replace(
+                    milestone,
+                    board_answer_display=self._board_answer_display(
+                        definition, board_ids
+                    ),
+                )
+            )
+        return enriched
+
+    def _board_answer_display(
+        self, definition: _MilestoneDefinition, board_ids: list[str]
+    ) -> str:
+        value = definition.calculator(board_ids)
+        if definition.answer_kind == "category":
+            return value if isinstance(value, str) else ""
+        if value is None:
+            return ""
+        return str(_round_half_up(float(value)))
 
     def _build_milestones(
         self,

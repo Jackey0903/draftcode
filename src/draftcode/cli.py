@@ -358,6 +358,11 @@ def answer(
     ),
     draws: int = typer.Option(1000, help="Number of Monte Carlo scenarios."),
     seed: int = typer.Option(42, help="Random seed for deterministic simulation."),
+    gm_preferences: Path = typer.Option(
+        Path("outputs/llm/gm_preferences.json"),
+        "--gm-preferences",
+        help="Cached GM deltas; must match `simulate` so the card and board agree.",
+    ),
     team_id: str | None = typer.Option(None, help="Optional official team_id to write."),
 ) -> None:
     """Generate the official XLSX answer card from the Draft Twin simulator."""
@@ -371,6 +376,7 @@ def answer(
         mock_signals=load_mock_signals(data_dir),
         config=config,
         dossiers=_load_default_dossiers(),
+        gm_preferences=_load_optional_gm_preferences(gm_preferences),
     ).run()
     write_answer_card(template=template, out=out, report=report, team_id=team_id)
 

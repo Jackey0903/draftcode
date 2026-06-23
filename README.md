@@ -108,11 +108,15 @@ fallback with the original rule fusion.
 Peterson example: 达林·彼得森 is flagged because `talent_rank=14` sits far below
 `market_rank=1.5`, so the deterministic rule labels the split `market_hype`. Given
 only neutral measurables (the rule verdict is never leaked into the prompt),
-gpt-5.5 instead returned `talent_undervalued` — judging the talent rank too
-conservative for an efficient, high-usage big guard with credible playmaking — and
-raised the market weight (w=0.65, confidence 0.64). His consensus rank moves 5 → 4:
-a measured correction, not a full jump to the market's #2, because the prospects
-ranked above him score higher on **both** signals.
+gpt-5.5 adjudicates on the merits. Verdicts are sampled once and cached in
+`divergence_llm.json` for determinism; in the committed run gpt-5.5 returned
+`true_split` for Peterson (market weight 0.52, confidence 0.63) — it found both the
+efficient-big-guard talent case and the market's enthusiasm credible, so it blends
+near-evenly instead of overriding either signal. The run flagged 7 large splits and
+gpt-5.5 returned `true_split` for all 7: an auditable, conservative profile that
+nudges fused scores by confidence-weighted amounts rather than swinging ranks.
+(gpt-5.5 sampling varies run to run — an earlier run returned `talent_undervalued`
+for Peterson; the cache locks whichever adjudication is current.)
 
 ## Real-time intel agent
 

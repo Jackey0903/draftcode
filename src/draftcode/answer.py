@@ -51,9 +51,12 @@ def _write_milestone_answers(sheet: Worksheet, report: TwinReport) -> None:
         if question_id not in milestones:
             raise ValueError(f"Missing milestone answer: {question_id}")
         row = _find_text_row(sheet, header_row, id_column, question_id)
-        sheet.cell(row=row, column=answer_column).value = milestones[
-            question_id
-        ].answer_display
+        milestone = milestones[question_id]
+        # Submit the board-consistent answer so the card never contradicts the
+        # predicted 30-pick board; fall back to the distribution answer if unset.
+        sheet.cell(row=row, column=answer_column).value = (
+            milestone.board_answer_display or milestone.answer_display
+        )
 
 
 def _write_team_id(sheet: Worksheet, team_id: str) -> None:
