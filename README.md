@@ -87,6 +87,14 @@ the Monte Carlo engine computes the deterministic dossier `preference_score`, th
 adds `0.50 * gm_delta`, where `gm_delta` is clamped to `[-0.08, 0.08]`. The trace
 records the raw delta, fixed weight, and weighted score adjustment for audit.
 
+## 创新点5: 红队 + 可审计追踪
+
+`draftcode warroom` produces the red-team challenge artifact at
+`outputs/llm/redteam.json`. `draftcode audit` then consolidates the Draft Twin
+prediction, pick explanations, gpt-5.5 divergence verdicts from `prospects.csv`,
+GM influence deltas, and red-team challenges into `outputs/audit.json` and
+`outputs/audit.md`: one replayable evidence file per prediction.
+
 ## 创新点1: gpt-5.5 双信号背离
 
 `draftcode ingest` now adjudicates large handbook talent-vs-market splits

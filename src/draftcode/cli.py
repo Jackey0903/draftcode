@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from draftcode.audit import build_audit, write_audit
 from draftcode.config import get_settings
 from draftcode.dossier import TeamDossier, load_team_dossiers
 from draftcode.intel import IntelReport, apply_intel, extract_intel
@@ -209,6 +210,42 @@ def warroom(
     console.print(f"[green]Wrote GM preferences:[/green] {summary['paths']['gm_preferences']}")
     console.print(f"[green]Wrote explanations:[/green] {summary['paths']['explanations']}")
     console.print(f"[green]Wrote redteam:[/green] {summary['paths']['redteam']}")
+
+
+@app.command()
+def audit(
+    twin: Path = typer.Option(
+        Path("outputs/twin.json"),
+        help="Draft Twin JSON artifact path.",
+    ),
+    llm_dir: Path = typer.Option(
+        Path("outputs/llm"),
+        help="Directory containing war-room LLM cache artifacts.",
+    ),
+    data_dir: Path = typer.Option(
+        Path("data/processed"),
+        help="Directory containing processed prospects.csv.",
+    ),
+    out_json: Path = typer.Option(
+        Path("outputs/audit.json"),
+        help="Output JSON path for the consolidated audit trail.",
+    ),
+    out_md: Path = typer.Option(
+        Path("outputs/audit.md"),
+        help="Output Markdown path for the consolidated audit report.",
+    ),
+) -> None:
+    """Build the consolidated prediction evidence audit trail."""
+    try:
+        audit_record = build_audit(twin_path=twin, llm_dir=llm_dir, data_dir=data_dir)
+    except FileNotFoundError as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    write_audit(audit_record, out_json=out_json, out_md=out_md)
+    _print_audit_summary(audit_record)
+    console.print(f"[green]Wrote audit JSON:[/green] {out_json}")
+    console.print(f"[green]Wrote audit Markdown:[/green] {out_md}")
 
 
 @app.command()
@@ -758,6 +795,30 @@ def _print_ingest_report(report: dict[str, object]) -> None:
 
 def _format_optional_float(value: float | None) -> str:
     return "" if value is None else f"{value:.2f}"
+
+
+def _print_audit_summary(audit_record: dict[str, object]) -> None:
+    integrity = audit_record["integrity"]
+    assert isinstance(integrity, dict)
+    summary = Table(title="DraftCode audit integrity")
+    summary.add_column("Metric")
+    summary.add_column("Value", justify="right")
+    for key in sorted(integrity):
+        summary.add_row(key, str(integrity[key]))
+    console.print(summary)
+
+    sources = audit_record["sources"]
+    assert isinstance(sources, dict)
+    source_table = Table(title="Audit source availability")
+    source_table.add_column("Artifact")
+    source_table.add_column("Status")
+    source_table.add_column("Path")
+    for artifact, path in sources.items():
+        if path is None:
+            source_table.add_row(str(artifact), "[yellow]degraded[/yellow]", "")
+        else:
+            source_table.add_row(str(artifact), "[green]found[/green]", str(path))
+    console.print(source_table)
 
 
 def _print_intel_result(report: IntelReport, result: dict[str, object]) -> None:
