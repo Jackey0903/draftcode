@@ -37,6 +37,8 @@ sam validate --template-file infra/template.yaml
 sam build --template-file infra/template.yaml
 ```
 
+The current SAM stack uses a Lambda container image. `sam validate` is fast; `sam build` may download the AWS Lambda Python base image the first time. If that stalls on venue Wi-Fi, run `make sam-pull-base` once, then retry `make sam-build`.
+
 Use the region assigned or recommended by the event. If no region is specified, default to `us-east-1` for Bedrock availability and broad service support.
 
 ## GitHub commands

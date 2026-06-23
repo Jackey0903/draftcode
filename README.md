@@ -43,6 +43,8 @@ Required manual logins:
 - `docs/prep_checklist.md`: account, tooling, and submission checklist.
 - `docs/race_day_runbook.md`: 24-hour execution plan.
 - `docs/nba_model_strategy.md`: data science strategy for NBA draft prediction.
+- `docs/architecture.md`: AWS serverless architecture and roadshow talk track.
+- `docs/aws_scorecard.md`: mapping from AWS scoring language to concrete implementation.
 
 ## Competition commands
 

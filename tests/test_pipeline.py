@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from draftcode.io import load_draft_order, load_mock_signals, load_prospects, load_team_needs
+from draftcode.lambda_handler import handler
 from draftcode.model import DraftPredictor
 from draftcode.pipeline import run_prediction
 
@@ -29,3 +30,11 @@ def test_mock_signal_can_move_a_close_decision() -> None:
     assert picks[0].abbreviation == "ATL"
     assert picks[0].prospect_id
     assert trace["picks"][0]["top_candidates"]
+
+
+def test_lambda_handler_supports_direct_workflow_event() -> None:
+    response = handler({"data_dir": str(SAMPLE_DIR)}, None)
+
+    assert str(response["run_id"]).startswith("run-")
+    assert response["prediction_count"] == 10
+    assert response["predictions"]

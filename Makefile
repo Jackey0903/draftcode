@@ -2,7 +2,7 @@ PYTHON ?= python3.11
 VENV ?= .venv
 UV ?= uv
 
-.PHONY: venv install install-full install-quality test lint predict validate-sample report dashboard api aws-check sam-validate clean
+.PHONY: venv install install-full install-quality test lint predict validate-sample report dashboard api aws-check sam-validate sam-pull-base sam-build clean
 
 venv:
 	test -x $(VENV)/bin/python || $(UV) venv --python $(PYTHON) $(VENV)
@@ -42,6 +42,12 @@ aws-check:
 
 sam-validate:
 	SAM_CLI_TELEMETRY=0 sam validate --template-file infra/template.yaml --region us-east-1
+
+sam-pull-base:
+	docker pull public.ecr.aws/lambda/python:3.12
+
+sam-build:
+	SAM_CLI_TELEMETRY=0 sam build --template-file infra/template.yaml
 
 clean:
 	rm -rf .pytest_cache .ruff_cache .mypy_cache outputs/*.csv outputs/*.json

@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 .venv/
+.aws-sam/
 __pycache__/
 *.py[cod]
 *.egg-info/

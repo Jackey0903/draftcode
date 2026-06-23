@@ -1,36 +1,152 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: DraftCode NBA draft prediction agent API.
+Description: DraftCode serverless NBA draft intelligence architecture.
 
 Globals:
   Function:
-    Runtime: python3.12
     Architectures:
       - arm64
     Timeout: 30
     MemorySize: 512
+    Tracing: Active
     Environment:
       Variables:
-        PYTHONPATH: /var/task/src
         DRAFTCODE_DATA_DIR: /var/task/data/sample
+        DRAFTCODE_AWS_REGION: !Ref AWS::Region
+        DRAFTCODE_S3_BUCKET: !Ref DraftDataBucket
+        DRAFTCODE_DYNAMODB_TABLE: !Ref PredictionRunsTable
+        DRAFTCODE_BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20240620-v1:0
 
 Resources:
+  DraftDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireIntermediateArtifacts
+            Status: Enabled
+            Prefix: intermediate/
+            ExpirationInDays: 7
+
+  PredictionRunsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: run_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: run_id
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+
   PredictionFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ..
-      Handler: draftcode.lambda_handler.handler
+      PackageType: Image
       Description: Generates auditable NBA draft predictions.
+      ReservedConcurrentExecutions: 5
       Policies:
         - AWSLambdaBasicExecutionRole
+        - S3ReadPolicy:
+            BucketName: !Ref DraftDataBucket
+        - DynamoDBWritePolicy:
+            TableName: !Ref PredictionRunsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/*
       Events:
         PredictionApi:
           Type: Api
           Properties:
             Path: /predictions
             Method: GET
+    Metadata:
+      DockerContext: ..
+      Dockerfile: Dockerfile.lambda
+      DockerTag: draftcode-predictor-python312
+
+  PredictionWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: STANDARD
+      Tracing:
+        Enabled: true
+      Definition:
+        Comment: Auditable serverless workflow for NBA draft prediction runs.
+        StartAt: GeneratePrediction
+        States:
+          GeneratePrediction:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !GetAtt PredictionFunction.Arn
+              Payload:
+                action: predict
+                run_mode: workflow
+            ResultPath: $.prediction
+            Retry:
+              - ErrorEquals:
+                  - Lambda.ServiceException
+                  - Lambda.AWSLambdaException
+                  - Lambda.SdkClientException
+                IntervalSeconds: 2
+                MaxAttempts: 3
+                BackoffRate: 2
+            Next: PersistRun
+          PersistRun:
+            Type: Task
+            Resource: arn:aws:states:::dynamodb:putItem
+            Parameters:
+              TableName: !Ref PredictionRunsTable
+              Item:
+                run_id:
+                  S.$: $.prediction.Payload.run_id
+                created_at:
+                  S.$: $.prediction.Payload.generated_at
+                prediction_count:
+                  N.$: States.Format('{}', $.prediction.Payload.prediction_count)
+                average_confidence:
+                  N.$: States.Format('{}', $.prediction.Payload.average_confidence)
+                status:
+                  S: SUCCEEDED
+            End: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref PredictionFunction
+        - DynamoDBWritePolicy:
+            TableName: !Ref PredictionRunsTable
 
 Outputs:
   PredictionApiUrl:
     Description: API Gateway endpoint for prediction runs.
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/predictions"
+  PredictionWorkflowArn:
+    Description: Step Functions workflow for auditable prediction runs.
+    Value: !Ref PredictionWorkflow
+  DraftDataBucketName:
+    Description: Encrypted S3 bucket for raw, processed, and prediction artifacts.
+    Value: !Ref DraftDataBucket
+  PredictionRunsTableName:
+    Description: DynamoDB run ledger table.
+    Value: !Ref PredictionRunsTable
