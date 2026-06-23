@@ -12,6 +12,7 @@ Use this table when preparing the code-quality explanation and roadshow.
 | Observability | CloudWatch default logs plus X-Ray tracing on Lambda and state machine. | `infra/template.yaml` |
 | Cost control | Pay-per-use serverless, DynamoDB on-demand, S3 lifecycle, concurrency cap. | `infra/template.yaml` |
 | AI responsibility | Bedrock explains deterministic traces instead of inventing predictions. | `docs/architecture.md` |
+| Data science insight | Milestone-aware Draft Twin optimizes both pick accuracy and the 28-point milestone section. | `docs/innovation_strategy.md` |
 | Agent auditability | Every pick has component scores and top alternatives. | `outputs/trace.json`, `src/draftcode/model.py` |
 | Submission safety | Output validator blocks missing or duplicate picks. | `draftcode validate-output` |
 

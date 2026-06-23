@@ -45,6 +45,7 @@ Required manual logins:
 - `docs/nba_model_strategy.md`: data science strategy for NBA draft prediction.
 - `docs/architecture.md`: AWS serverless architecture and roadshow talk track.
 - `docs/aws_scorecard.md`: mapping from AWS scoring language to concrete implementation.
+- `docs/innovation_strategy.md`: Milestone-Aware Draft Twin concept and build priorities.
 
 ## Competition commands
 

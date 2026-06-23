@@ -4,6 +4,8 @@
 
 DraftCode is a serverless, auditable NBA draft intelligence pipeline: data lands in S3, Step Functions orchestrates prediction runs, a containerized Lambda executes the deterministic agent, DynamoDB records every run, and Bedrock is reserved for grounded explanations instead of unverified final decisions.
 
+The product innovation is the **Milestone-Aware Draft Twin**: a probabilistic simulation that predicts both the 30 pick sheet and the 7 milestone questions from the same evidence graph. See `docs/innovation_strategy.md`.
+
 ## Architecture diagram
 
 ```mermaid
@@ -15,6 +17,8 @@ flowchart LR
     Processed --> Lambda
     Event["EventBridge or manual trigger"] --> Flow["Step Functions<br/>Prediction workflow"]
     Flow --> Lambda
+    Flow -. optional fanout .-> Map["Distributed Map<br/>Monte Carlo scenarios"]
+    Map -. parallel invocations .-> Lambda
     Lambda --> Trace["S3 prediction artifacts<br/>CSV + trace JSON + report"]
     Flow --> Runs["DynamoDB run ledger"]
     Lambda -. grounded trace .-> Bedrock["Amazon Bedrock<br/>rationale generator"]
@@ -79,6 +83,7 @@ Implemented now:
 Next if time allows:
 
 - Add S3 writeback for final prediction artifacts.
+- Add milestone calculators and Monte Carlo scenario outputs.
 - Add a Bedrock explanation Lambda that reads trace JSON and emits concise pick rationales.
 - Add a CloudFront-hosted static report for roadshow fallback.
 - Add EventBridge schedule or manual one-click workflow execution.
