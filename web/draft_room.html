@@ -66,6 +66,17 @@
   .ms .d{font-size:12px;color:var(--mut);margin:7px 0 12px;line-height:1.45;min-height:50px}
   .ms .a{font-size:24px;font-weight:800;letter-spacing:-.01em}
   .ms .a small{font-size:13px;color:var(--mut);font-weight:600}
+  /* red team / audit */
+  .audit{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px}
+  .au{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px;text-align:center}
+  .au .n{font-size:23px;font-weight:800;letter-spacing:-.01em}
+  .au .l{font-size:11px;color:var(--mut);margin-top:4px;line-height:1.35}
+  .au .n.r{color:var(--accent)} .au .n.t{color:var(--teal)} .au .n.g{color:var(--gold)} .au .n.b{color:#7aa2ff}
+  .rt{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
+  .rtq{display:flex;gap:13px;background:linear-gradient(165deg,var(--card2),var(--card));
+    border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:14px 16px}
+  .rtq .qn{font-size:14px;font-weight:800;color:var(--accent);min-width:20px;font-variant-numeric:tabular-nums;padding-top:1px}
+  .rtq p{font-size:13px;color:var(--txt);line-height:1.5}
   .foot{margin-top:50px;padding-top:24px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px}
   .foot b{color:var(--mut)}
   @media(max-width:760px){.metrics,.agents,.mgrid{grid-template-columns:repeat(2,1fr)}.board{grid-template-columns:1fr}h1{font-size:32px}}
@@ -113,6 +124,10 @@
   <div class="sec-h"><h2>7 道里程碑预测</h2><span class="tag">同一批模拟顺手算出 · 28 分</span></div>
   <div class="mgrid" id="ms"></div>
 
+  <div class="sec-h"><h2>红队质询 · 可审计追踪</h2><span class="tag">gpt-5.5 自我对抗 · 每个预测可复现为单一证据档 audit.json</span></div>
+  <div class="audit" id="audit"></div>
+  <div class="rt" id="rt"></div>
+
   <div class="foot">
     <b>DraftCode</b> · Monte Carlo Draft Twin + 30 GM Inline Agents + 实时情报/多源市场 ·
     AWS Serverless（S3 / DynamoDB / Lambda 容器 / Step Functions Distributed Map）+ gpt-5.5 网关（EC2）·
@@ -152,6 +167,20 @@ PICKS.forEach(([no,ab,nm,p,tr])=>{const[tn,tc]=TEAM[ab]||["其他","#888"];
 const ms=document.getElementById('ms');
 MS.forEach(([q,d,a,u])=>{ms.insertAdjacentHTML('beforeend',`<div class="ms"><div class="q">${q}</div>
   <div class="d">${d}</div><div class="a">${a}${u?` <small>${u}</small>`:''}</div></div>`);});
+const AUDIT=[['30','顺位全程审计',''],['26','逐顺位 gpt-5.5 解释','t'],['15','GM 偏好影响顺位','g'],
+['13','偏离最可能人选',''],['8','红队质询','r'],['30','显式标注低置信','b']];
+const RT=['1 号签实际最高概率是布泽尔 0.267，为何指派给低一档的迪班萨 0.260？',
+'所有 30 个顺位都标为低信心，为什么还输出单点顺位板而非区间/情景板？',
+'第 5、8、11、20、21、22、25、26、27 顺位均未选本顺位最高概率球员，是否存在人为平滑或去重导致的过拟合？',
+'多个热门新秀首轮概率被设为 1.0，是否低估了伤病、体测退步、退选或球队信息变化的尾部风险？',
+'密歇根大学成为首轮最多来源的置信度 0.966 是否异常偏高，是否被同校标签或模拟规则锁定？',
+'阿达伊·马拉、小莫雷兹·约翰逊等内线相关预测是否充分纳入移动能力、体测和医疗风险？',
+'第 30 顺位布雷登·伯里斯概率 0.312 显著高于多数乐透签概率，是否在末段对特定传闻过度自信？',
+'同名纳撒尼尔·阿门特同时出现为 p084 和 p067，是否存在球员 ID 重复或数据污染？'];
+const au=document.getElementById('audit');
+AUDIT.forEach(([n,l,c])=>{au.insertAdjacentHTML('beforeend',`<div class="au"><div class="n ${c}">${n}</div><div class="l">${l}</div></div>`);});
+const rt=document.getElementById('rt');
+RT.forEach((q,i)=>{rt.insertAdjacentHTML('beforeend',`<div class="rtq"><div class="qn">${i+1}</div><p>${q}</p></div>`);});
 </script>
 </body>
 </html>
