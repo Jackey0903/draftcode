@@ -147,7 +147,7 @@ const PICKS=[[1,'WAS','AJ 迪班萨',0.74,0],
 [3,'MEM','卡梅隆 布泽尔',0.51,0],
 [4,'CHI','凯莱布 威尔逊',0.49,0],
 [5,'LAC','基顿 瓦格勒',0.38,0],
-[6,'BKN','纳撒尼尔 阿门特',0.17,0],
+[6,'BKN','迈克尔 布朗',0.0,0],
 [7,'SAC','达柳斯 阿卡夫',0.11,0],
 [8,'ATL','亚克塞尔 伦德伯格',0.19,0],
 [9,'DAL','金斯顿 弗莱明斯',0.18,0],
@@ -190,7 +190,7 @@ PICKS.forEach(([no,ab,nm,p,tr])=>{const[tn,tc]=TEAM[ab]||["其他","#888"];
 const ms=document.getElementById('ms');
 MS.forEach(([q,d,a,u])=>{ms.insertAdjacentHTML('beforeend',`<div class="ms"><div class="q">${q}</div>
   <div class="d">${d}</div><div class="a">${a}${u?` <small>${u}</small>`:''}</div></div>`);});
-const AUDIT=[['30','顺位全程审计',''],['12','资金信号覆盖','g'],['0','专家×资金背离','r'],['17','gpt-5.5 解释','t'],['14','GM 偏好影响','b'],['8','红队质询','r']];
+const AUDIT=[['30','顺位全程审计',''],['12','资金信号覆盖','g'],['0','专家×资金背离','r'],['17','gpt-5.5 解释','t'],['13','GM 偏好影响','b'],['8','红队质询','r']];
 const RT=['第5顺位以后几乎全是低置信度，为什么仍把单点最高概率当成确定板而非分层/情景板？',
 '第12顺位Q4里answer_display为12但board_answer_display为11，中锋识别或顺位映射是否存在口径错误？',
 '多名球员first_round_probability=1.0，这是否过度自信，是否忽略退选、伤病、体测崩盘或球队承诺变化？',

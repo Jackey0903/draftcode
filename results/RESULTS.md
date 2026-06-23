@@ -1,19 +1,19 @@
 # 🏀 DraftCode 最终预测结果 · Final Results
 
 > **2026 NBA 选秀** · AWS Summit Shanghai 2026「模拟球探」  
-> 三信号融合(天赋·专家·资金)+ 当日最新情报(ESPN 终版 mock)+ **内幕锁定**。持签球队=官方板+确认交易;池=官方 107;蒙特卡洛 1500 次。
+> 三信号融合(天赋·专家·资金)+ 当日最新情报(ESPN 终版 mock)+ 内幕锁定。持签球队=官方板+确认交易;池=官方 107;蒙特卡洛 1500 次。
 
 ## 一、30 顺位预测
 
 | # | 持签球队 | 预测球员 | 置信度 | |
 |--:|--|--|--:|--|
-| 1 | Washington Wizards | AJ 迪班萨 | 74% | 🔒内幕锁定 |
-| 2 | Utah Jazz | 达林 彼得森 | 50% | 🔒内幕锁定 |
-| 3 | Memphis Grizzlies | 卡梅隆 布泽尔 | 51% | 🔒内幕锁定 |
-| 4 | Chicago Bulls | 凯莱布 威尔逊 | 49% | 🔒内幕锁定 |
+| 1 | Washington Wizards | AJ 迪班萨 | 74% | 🔒锁定 |
+| 2 | Utah Jazz | 达林 彼得森 | 50% | 🔒锁定 |
+| 3 | Memphis Grizzlies | 卡梅隆 布泽尔 | 51% | 🔒锁定 |
+| 4 | Chicago Bulls | 凯莱布 威尔逊 | 49% | 🔒锁定 |
 | 5 | Los Angeles Clippers | 基顿 瓦格勒 | 38% | |
-| 6 | Brooklyn Nets | 纳撒尼尔 阿门特 | 17% | |
-| 7 | Sacramento Kings | 达柳斯 阿卡夫 | 11% | 🔒内幕锁定 |
+| 6 | Brooklyn Nets | 迈克尔 布朗 | 0% | 🔒锁定 |
+| 7 | Sacramento Kings | 达柳斯 阿卡夫 | 11% | 🔒锁定 |
 | 8 | Atlanta Hawks | 亚克塞尔 伦德伯格 | 19% | |
 | 9 | Dallas Mavericks | 金斯顿 弗莱明斯 | 18% | |
 | 10 | Milwaukee Bucks | 小拉巴伦 菲隆 | 18% | |
@@ -50,13 +50,13 @@
 | Q6 | 贡献最多机构 | **密歇根大学** |
 | Q7 | 手掌长度前 5 进首轮 | **2 人** |
 
-## 三、当日情报采纳
+## 三、内幕锁定(🔒)
 
-- **内幕锁定(insider lock)** 🔒:对官方/权威媒体明确报道的高确定性队-人选择做硬锁定——
-  Wizards→Dybantsa、Jazz→Peterson、Grizzlies→Boozer、Bulls→Wilson、**Kings→Acuff**(ESPN「strong mutual interest」)。
-  Acuff 案例:天赋模型评其前 4,但 mock+赔率+内幕一致指向第 7(Kings)——典型「天赋≠顺位」,以市场/内幕为准。
-- **专家信号并入 ESPN 终版 mock**(CBS+SI+ESPN 三源共识)。
-- 持签球队=官方板;字母哥交易经核实官方(pick13=Milwaukee);池严格=官方 107。
+官方/权威媒体明确的高确定性队-人选择硬锁定:Wizards→Dybantsa、Jazz→Peterson、Grizzlies→Boozer、
+Bulls→Wilson、**Nets→Mikel Brown(迈克尔·布朗,路易斯维尔,CBS/SI/ESPN 一致@6)**、Kings→Acuff。
+
+> 注:迈克尔·布朗 vs 马利奇·布朗是两人——前者(路易斯维尔后卫)是热门 @6,已锁定;
+> 后者(杜克前锋)是我们天赋模型的 @29(无 mock 支撑,属天赋vs市场背离)。
 
 提交用:[`answer_card.xlsx`](answer_card.xlsx) · 锁定清单:[`locks.json`](locks.json)
 
