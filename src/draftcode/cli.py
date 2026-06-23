@@ -16,6 +16,7 @@ from draftcode.intel import IntelReport, apply_intel, extract_intel
 from draftcode.io import (
     load_draft_order,
     load_mock_signals,
+    load_odds_signals,
     load_prospects,
     load_team_needs,
     write_twin_report,
@@ -113,6 +114,7 @@ def simulate(
         config=config,
         dossiers=_load_default_dossiers(),
         gm_preferences=loaded_gm_preferences,
+        odds_signals=load_odds_signals(resolved_data_dir),
     ).run()
     write_twin_report(resolved_output, report)
 
@@ -412,6 +414,7 @@ def answer(
         config=config,
         dossiers=_load_default_dossiers(),
         gm_preferences=_load_optional_gm_preferences(gm_preferences),
+        odds_signals=load_odds_signals(data_dir),
     ).run()
     write_answer_card(template=template, out=out, report=report, team_id=team_id)
 

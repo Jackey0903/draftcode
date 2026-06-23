@@ -188,3 +188,20 @@ def test_milestones_present() -> None:
     assert answered["Q4"].expected == 0
     assert answered["Q5"].expected == 0
     assert answered["Q7"].expected == 0
+
+
+def test_odds_anchor_blends_toward_market() -> None:
+    candidates = [{"prospect_id": "a"}, {"prospect_id": "b"}]
+    blended = MonteCarloDraftTwin._blend_odds_probs(
+        candidates, [0.5, 0.5], {"a": 0.9, "b": 0.1}, 0.85
+    )
+    assert abs(sum(blended) - 1.0) < 1e-9
+    assert blended[0] > 0.8  # pulled toward the de-vigged odds favorite
+
+    # No odds market for the slot leaves the softmax distribution untouched.
+    assert MonteCarloDraftTwin._blend_odds_probs([{"prospect_id": "a"}], [1.0], None, 0.85) == [1.0]
+    assert MonteCarloDraftTwin._blend_odds_probs(candidates, [0.5, 0.5], {}, 0.85) == [0.5, 0.5]
+
+    # Anchor strength is strong at the top and decays to zero down the board.
+    assert MonteCarloDraftTwin._odds_lambda(1) > MonteCarloDraftTwin._odds_lambda(4) > 0
+    assert MonteCarloDraftTwin._odds_lambda(9) == 0.0

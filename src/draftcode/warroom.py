@@ -13,7 +13,13 @@ from draftcode.agents import (
     redteam_agent_result,
 )
 from draftcode.dossier import TeamDossier, load_team_dossiers
-from draftcode.io import load_draft_order, load_mock_signals, load_prospects, load_team_needs
+from draftcode.io import (
+    load_draft_order,
+    load_mock_signals,
+    load_odds_signals,
+    load_prospects,
+    load_team_needs,
+)
 from draftcode.schemas import Prospect
 from draftcode.simulate import MonteCarloDraftTwin, SimulationConfig, TwinReport
 
@@ -39,6 +45,7 @@ def run_warroom(
     draft_order = load_draft_order(data_dir)
     team_needs = load_team_needs(data_dir)
     mock_signals = load_mock_signals(data_dir)
+    odds_signals = load_odds_signals(data_dir)
     dossiers = load_team_dossiers(dossier_path)
 
     candidates = _select_gm_candidates(prospects, gm_candidate_limit)
@@ -60,6 +67,7 @@ def run_warroom(
         config=SimulationConfig(draws=draws, seed=seed),
         dossiers=dossiers,
         gm_preferences=gm_preferences,
+        odds_signals=odds_signals,
     )
     report = twin.run()
 

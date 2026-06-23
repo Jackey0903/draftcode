@@ -22,12 +22,14 @@ def preference_score(
     )
     persona_fit = _persona_fit(dossier, prospect, components)
     market = _market_score(prospect, components)
+    money = _odds_score(prospect, components)
 
     score = (
         weights["talent"] * talent
         + weights["need"] * need_fit
         + weights["persona"] * persona_fit
         + weights["market"] * market
+        + weights["money"] * money
     )
     breakdown: dict[str, float | str] = {
         "score": _clamp(score),
@@ -35,10 +37,12 @@ def preference_score(
         "need_fit": need_fit,
         "persona_fit": persona_fit,
         "market": market,
+        "money": money,
         "w_talent": weights["talent"],
         "w_need": weights["need"],
         "w_persona": weights["persona"],
         "w_market": weights["market"],
+        "w_money": weights["money"],
         "philosophy": dossier.gm_persona.philosophy,
         "risk_tolerance": dossier.gm_persona.risk_tolerance,
         "intl_openness": dossier.gm_persona.intl_openness,
@@ -47,11 +51,14 @@ def preference_score(
 
 
 def _persona_weights(philosophy: str) -> dict[str, float]:
+    # `money` is an ADDITIVE money-signal weight (de-vigged odds). It contributes
+    # nothing when a prospect has no odds_signal (top-of-board only), so no-odds
+    # runs are byte-identical; existing weights are intentionally not rebalanced.
     if philosophy == "BPA":
-        return {"talent": 0.52, "need": 0.14, "persona": 0.20, "market": 0.14}
+        return {"talent": 0.52, "need": 0.14, "persona": 0.20, "market": 0.14, "money": 0.12}
     if philosophy == "NEED":
-        return {"talent": 0.30, "need": 0.36, "persona": 0.20, "market": 0.14}
-    return {"talent": 0.40, "need": 0.24, "persona": 0.22, "market": 0.14}
+        return {"talent": 0.30, "need": 0.36, "persona": 0.20, "market": 0.14, "money": 0.12}
+    return {"talent": 0.40, "need": 0.24, "persona": 0.22, "market": 0.14, "money": 0.12}
 
 
 def _talent_score(prospect: Prospect, components: Mapping[str, Any]) -> float:
@@ -69,6 +76,13 @@ def _market_score(prospect: Prospect, components: Mapping[str, Any]) -> float:
     mock = _component_float(components, "mock_score", 0.0)
     market_signal = prospect.market_signal if prospect.market_signal is not None else 0.0
     return _clamp(max(mock, float(market_signal)))
+
+
+def _odds_score(prospect: Prospect, components: Mapping[str, Any]) -> float:
+    """De-vigged money signal (0 when the prospect has no odds market)."""
+    explicit = _component_float(components, "odds_score", 0.0)
+    signal = prospect.odds_signal if prospect.odds_signal is not None else 0.0
+    return _clamp(max(explicit, float(signal)))
 
 
 def _persona_fit(

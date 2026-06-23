@@ -10,7 +10,21 @@ from dataclasses import dataclass, replace
 from draftcode.dossier import TeamDossier
 from draftcode.model import DraftPredictor
 from draftcode.preference import preference_score
-from draftcode.schemas import MockSignal, ModelWeights, Prospect, Team, TeamNeed
+from draftcode.schemas import (
+    MockSignal,
+    ModelWeights,
+    OddsSignal,
+    Prospect,
+    Team,
+    TeamNeed,
+)
+
+# Money/odds anchor: at the sharp top of the board, blend the softmax sampling
+# distribution toward the de-vigged odds-implied probabilities so the marginal
+# (confidence) at the top matches the betting market. Strength decays to 0 over
+# the top span; picks without an odds market are unaffected (pure softmax).
+_ODDS_ANCHOR_STRENGTH = 0.85
+_ODDS_ANCHOR_SPAN = 8
 
 
 @dataclass(frozen=True)
@@ -241,6 +255,7 @@ class MonteCarloDraftTwin:
         weights: ModelWeights | None = None,
         dossiers: dict[str, TeamDossier] | None = None,
         gm_preferences: dict[str, dict[str, float]] | None = None,
+        odds_signals: list[OddsSignal] | None = None,
     ) -> None:
         self.prospects = prospects
         self.draft_order = sorted(draft_order, key=lambda row: row.pick)
@@ -250,6 +265,7 @@ class MonteCarloDraftTwin:
         self.weights = weights or ModelWeights()
         self.dossiers = dossiers
         self.gm_preferences = _normalize_gm_preferences(gm_preferences)
+        self._odds_by_abbr = self._index_odds_signals(odds_signals or [])
         self.preference_trace: list[dict[str, object]] = []
         self._prospect_index = {prospect.prospect_id: prospect for prospect in prospects}
         self._prospect_rank = {
@@ -416,7 +432,12 @@ class MonteCarloDraftTwin:
                         ],
                     }
                 )
-            winner_id = self._choose_candidate(scored[: max(1, self.config.top_k)], rng)
+            candidates = scored[: max(1, self.config.top_k)]
+            odds_dist = self._odds_by_abbr.get(team.abbreviation)
+            odds_lambda = self._odds_lambda(team.pick) if odds_dist else 0.0
+            winner_id = self._choose_candidate(
+                candidates, rng, odds_dist=odds_dist, odds_lambda=odds_lambda
+            )
             selected.append(winner_id)
             available.pop(winner_id)
 
@@ -539,10 +560,13 @@ class MonteCarloDraftTwin:
         self,
         candidates: list[dict[str, object]],
         rng: random.Random,
+        odds_dist: dict[str, float] | None = None,
+        odds_lambda: float = 0.0,
     ) -> str:
         if not candidates:
             raise ValueError("No candidates available for simulated pick")
-        if self.config.temperature <= 1e-6:
+        anchored = bool(odds_dist) and odds_lambda > 0.0
+        if self.config.temperature <= 1e-6 and not anchored:
             return str(candidates[0]["prospect_id"])
 
         temperature = max(self.config.temperature, 1e-12)
@@ -552,13 +576,49 @@ class MonteCarloDraftTwin:
             for candidate in candidates
         ]
         total = sum(weights)
+        probs = [weight / total for weight in weights]
+
+        if anchored:
+            probs = self._blend_odds_probs(candidates, probs, odds_dist, odds_lambda)
+
         draw = rng.random()
         cumulative = 0.0
-        for candidate, weight in zip(candidates, weights, strict=True):
-            cumulative += weight / total
+        for candidate, prob in zip(candidates, probs, strict=True):
+            cumulative += prob
             if draw <= cumulative:
                 return str(candidate["prospect_id"])
         return str(candidates[-1]["prospect_id"])
+
+    @staticmethod
+    def _blend_odds_probs(
+        candidates: list[dict[str, object]],
+        softmax_probs: list[float],
+        odds_dist: dict[str, float] | None,
+        odds_lambda: float,
+    ) -> list[float]:
+        """Blend softmax with the de-vigged odds distribution over the candidates."""
+        odds_raw = [
+            max(0.0, float((odds_dist or {}).get(str(candidate["prospect_id"]), 0.0)))
+            for candidate in candidates
+        ]
+        odds_total = sum(odds_raw)
+        if odds_total <= 0:
+            return softmax_probs
+        odds_probs = [value / odds_total for value in odds_raw]
+        lam = min(1.0, max(0.0, odds_lambda))
+        return [(1.0 - lam) * s + lam * o for s, o in zip(softmax_probs, odds_probs, strict=True)]
+
+    def _index_odds_signals(self, odds_signals: list[OddsSignal]) -> dict[str, dict[str, float]]:
+        index: dict[str, dict[str, float]] = {}
+        for signal in odds_signals:
+            index.setdefault(signal.abbreviation, {})[signal.prospect_id] = signal.implied_prob
+        return index
+
+    @staticmethod
+    def _odds_lambda(pick: int) -> float:
+        """Anchor strength by slot: strong at the top, decaying to 0 over the span."""
+        decay = 1.0 - (pick - 1) / _ODDS_ANCHOR_SPAN
+        return _ODDS_ANCHOR_STRENGTH * max(0.0, decay)
 
     def _build_pick_distributions(
         self,
