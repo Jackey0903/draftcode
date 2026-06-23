@@ -256,6 +256,7 @@ class MonteCarloDraftTwin:
         dossiers: dict[str, TeamDossier] | None = None,
         gm_preferences: dict[str, dict[str, float]] | None = None,
         odds_signals: list[OddsSignal] | None = None,
+        locks: dict[int, str] | None = None,
     ) -> None:
         self.prospects = prospects
         self.draft_order = sorted(draft_order, key=lambda row: row.pick)
@@ -266,6 +267,9 @@ class MonteCarloDraftTwin:
         self.dossiers = dossiers
         self.gm_preferences = _normalize_gm_preferences(gm_preferences)
         self._odds_by_abbr = self._index_odds_signals(odds_signals or [])
+        # Confirmed insider locks (pick -> prospect_id): officially reported,
+        # high-certainty team→player picks that override the probabilistic board.
+        self._locks = {int(pick): str(pid) for pick, pid in (locks or {}).items()}
         self.preference_trace: list[dict[str, object]] = []
         self._prospect_index = {prospect.prospect_id: prospect for prospect in prospects}
         self._prospect_rank = {
@@ -655,6 +659,31 @@ class MonteCarloDraftTwin:
             )
         return distributions
 
+    def _apply_locks_to_matrix(
+        self, matrix: list[list[int]], prospect_ids: list[str]
+    ) -> None:
+        """Pin confirmed insider locks (pick -> prospect) in the assignment matrix.
+
+        Sets a dominating weight on each locked (pick, prospect) cell and zeroes
+        the rest of that pick's row and that prospect's column, so the Hungarian
+        assignment honours the lock and optimally assigns every remaining slot.
+        """
+        if not self._locks or not matrix:
+            return
+        col_of = {pid: idx for idx, pid in enumerate(prospect_ids)}
+        row_of = {team.pick: idx for idx, team in enumerate(self.draft_order)}
+        lock_weight = max((max(row) for row in matrix if row), default=0) * 1000 + 1
+        for pick, prospect_id in self._locks.items():
+            row = row_of.get(pick)
+            col = col_of.get(prospect_id)
+            if row is None or col is None:
+                continue
+            for j in range(len(prospect_ids)):
+                matrix[row][j] = 0
+            for i in range(len(matrix)):
+                matrix[i][col] = 0
+            matrix[row][col] = lock_weight
+
     def _build_assigned_picks(
         self,
         pick_counters: list[Counter[str]],
@@ -662,10 +691,14 @@ class MonteCarloDraftTwin:
         draws: int,
     ) -> list[AssignedPick]:
         prospect_ids = self._assignment_candidate_ids(pick_counters, prospect_counter)
+        for locked_id in self._locks.values():
+            if locked_id not in prospect_ids and locked_id in self._prospect_index:
+                prospect_ids.append(locked_id)
         weight_matrix = [
             [counter.get(prospect_id, 0) for prospect_id in prospect_ids]
             for counter in pick_counters
         ]
+        self._apply_locks_to_matrix(weight_matrix, prospect_ids)
         assignment = _max_weight_assignment(weight_matrix)
 
         assigned: list[AssignedPick] = []

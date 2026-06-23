@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import html
+import json
 import os
 from pathlib import Path
 
@@ -115,6 +116,7 @@ def simulate(
         dossiers=_load_default_dossiers(),
         gm_preferences=loaded_gm_preferences,
         odds_signals=load_odds_signals(resolved_data_dir),
+        locks=_load_locks_for(resolved_data_dir),
     ).run()
     write_twin_report(resolved_output, report)
 
@@ -422,6 +424,7 @@ def answer(
         dossiers=_load_default_dossiers(),
         gm_preferences=_load_optional_gm_preferences(gm_preferences),
         odds_signals=load_odds_signals(data_dir),
+        locks=_load_locks_for(data_dir),
     ).run()
     write_answer_card(template=template, out=out, report=report, team_id=team_id)
 
@@ -1045,6 +1048,30 @@ def _load_optional_gm_preferences(path: Path) -> dict[str, dict[str, float]]:
         f"{path} ({len(preferences)} teams, {delta_count} deltas)"
     )
     return preferences
+
+
+def _load_locks_for(data_dir: Path) -> dict[int, str]:
+    """Load confirmed insider locks (pick -> player name) -> {pick: prospect_id}."""
+    path = data_dir / "locks.json"
+    if not path.is_file():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    by_name = {prospect.name: prospect.prospect_id for prospect in load_prospects(data_dir)}
+    locks: dict[int, str] = {}
+    for pick, name in raw.items():
+        prospect_id = by_name.get(str(name).strip())
+        if prospect_id is None:
+            continue
+        try:
+            locks[int(pick)] = prospect_id
+        except (TypeError, ValueError):
+            continue
+    if locks:
+        console.print(f"[green]Insider locks applied:[/green] {len(locks)} pick(s) from {path}")
+    return locks
 
 
 def _load_default_dossiers() -> dict[str, TeamDossier] | None:
