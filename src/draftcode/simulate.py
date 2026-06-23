@@ -23,6 +23,7 @@ from draftcode.schemas import (
 # distribution toward the de-vigged odds-implied probabilities so the marginal
 # (confidence) at the top matches the betting market. Strength decays to 0 over
 # the top span; picks without an odds market are unaffected (pure softmax).
+_LOCK_CONFIDENCE = 0.9
 _ODDS_ANCHOR_STRENGTH = 0.85
 _ODDS_ANCHOR_SPAN = 8
 
@@ -710,6 +711,11 @@ class MonteCarloDraftTwin:
         ):
             prospect_id = prospect_ids[column_index]
             prospect = self._prospect_index[prospect_id]
+            marginal = counter.get(prospect_id, 0) / draws
+            # Insider-locked picks reflect external certainty, not the Monte Carlo
+            # marginal (the sim may never select them at that exact slot on its own).
+            if self._locks.get(team.pick) == prospect_id:
+                marginal = max(marginal, _LOCK_CONFIDENCE)
             assigned.append(
                 AssignedPick(
                     pick=team.pick,
@@ -717,7 +723,7 @@ class MonteCarloDraftTwin:
                     abbreviation=team.abbreviation,
                     prospect_id=prospect_id,
                     prospect_name=prospect.name,
-                    marginal_probability=counter.get(prospect_id, 0) / draws,
+                    marginal_probability=marginal,
                 )
             )
         return assigned
