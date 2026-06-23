@@ -58,6 +58,8 @@ PROSPECT_COLUMNS = [
     "divergence_llm_market_weight",
     "divergence_llm_confidence",
     "divergence_llm_reasoning",
+    "odds_signal",
+    "odds_rank",
     "fused_score",
 ]
 
@@ -620,6 +622,8 @@ def _build_prospects(
             "divergence_llm_market_weight": None,
             "divergence_llm_confidence": None,
             "divergence_llm_reasoning": "",
+            "odds_signal": None,
+            "odds_rank": None,
             "fused_score": None,
         }
         builds.append(

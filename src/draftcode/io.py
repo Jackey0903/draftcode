@@ -7,7 +7,14 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TypeVar
 
-from draftcode.schemas import DraftPick, MockSignal, Prospect, Team, TeamNeed
+from draftcode.schemas import (
+    DraftPick,
+    MockSignal,
+    OddsSignal,
+    Prospect,
+    Team,
+    TeamNeed,
+)
 from draftcode.simulate import TwinReport
 
 T = TypeVar("T")
@@ -77,6 +84,8 @@ def load_prospects(data_dir: Path) -> list[Prospect]:
             divergence_gap=_optional_int(row.get("divergence_gap")),
             divergence_type=row.get("divergence_type", ""),
             divergence_reason=row.get("divergence_reason", ""),
+            odds_signal=_optional_float(row.get("odds_signal")),
+            odds_rank=_optional_float(row.get("odds_rank")),
             fused_score=_optional_float(row.get("fused_score")),
         )
         for row in _read_rows(data_dir / "prospects.csv")
@@ -116,6 +125,21 @@ def load_mock_signals(data_dir: Path) -> list[MockSignal]:
             abbreviation=row["abbreviation"],
             prospect_id=row["prospect_id"],
             signal_strength=float(row["signal_strength"]),
+            source=row["source"],
+        )
+        for row in _read_rows(path)
+    ]
+
+
+def load_odds_signals(data_dir: Path) -> list[OddsSignal]:
+    path = data_dir / "odds_signals.csv"
+    if not path.exists():
+        return []
+    return [
+        OddsSignal(
+            abbreviation=row["abbreviation"],
+            prospect_id=row["prospect_id"],
+            implied_prob=float(row["implied_prob"]),
             source=row["source"],
         )
         for row in _read_rows(path)

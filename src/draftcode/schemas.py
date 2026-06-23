@@ -41,6 +41,8 @@ class Prospect:
     divergence_gap: int | None = None
     divergence_type: str = ""
     divergence_reason: str = ""
+    odds_signal: float | None = None
+    odds_rank: float | None = None
     fused_score: float | None = None
 
 
@@ -65,6 +67,14 @@ class MockSignal:
     abbreviation: str
     prospect_id: str
     signal_strength: float
+    source: str
+
+
+@dataclass(frozen=True)
+class OddsSignal:
+    abbreviation: str
+    prospect_id: str
+    implied_prob: float
     source: str
 
 

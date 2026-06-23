@@ -21,6 +21,7 @@ from draftcode.io import (
     write_twin_report,
 )
 from draftcode.market import MarketReport, aggregate_mocks, apply_market
+from draftcode.odds import OddsReport, aggregate_odds, apply_odds
 from draftcode.pipeline import run_prediction
 from draftcode.simulate import MonteCarloDraftTwin, SimulationConfig
 from draftcode.warroom import load_gm_adjustments, run_warroom
@@ -322,6 +323,40 @@ def market(
     report = aggregate_mocks(mocks, prospect_names)
     result = apply_market(report, data_dir, dry_run=not apply_changes)
     _print_market_result(report, result)
+
+
+@app.command()
+def odds(
+    data_dir: Path = typer.Option(
+        Path("data/processed"),
+        help="Directory containing processed prospects/draft_order/odds CSVs.",
+    ),
+    odds_file: list[str] | None = typer.Option(
+        None,
+        "--odds-file",
+        help="Externally fetched sportsbook odds as source=path. May repeat.",
+    ),
+    odds_dir: Path | None = typer.Option(
+        None,
+        "--odds-dir",
+        help="Directory of externally fetched odds files; filename stem is the source.",
+    ),
+    apply_changes: bool = typer.Option(
+        False,
+        "--apply",
+        help="Write prospects.csv/odds_signals.csv. Default is dry-run preview.",
+    ),
+) -> None:
+    """Aggregate externally supplied betting odds into de-vigged money signals."""
+    sources = _load_odds_sources(odds_file or [], odds_dir)
+    if not sources:
+        console.print("[red]error:[/red] pass --odds-file source=path or --odds-dir dir")
+        raise typer.Exit(code=1)
+
+    prospect_names = _read_market_prospect_names(data_dir)
+    report = aggregate_odds(sources, prospect_names)
+    result = apply_odds(report, data_dir, dry_run=not apply_changes)
+    _print_odds_result(report, result)
 
 
 @app.command()
@@ -919,6 +954,65 @@ def _print_market_result(report: MarketReport, result: dict[str, object]) -> Non
     else:
         console.print("[yellow]No consensus rankings; CSV files left untouched.[/yellow]")
     console.print(f"[green]Wrote market audit:[/green] {result['audit_path']}")
+
+
+def _load_odds_sources(odds_files: list[str], odds_dir: Path | None) -> list[tuple[str, str]]:
+    sources: list[tuple[str, str]] = []
+    for spec in odds_files:
+        if "=" not in spec:
+            console.print("[red]error:[/red] --odds-file must use source=path")
+            raise typer.Exit(code=1)
+        source, raw_path = spec.split("=", 1)
+        source = source.strip()
+        raw_path = raw_path.strip()
+        if not source or not raw_path:
+            console.print("[red]error:[/red] --odds-file must use source=path")
+            raise typer.Exit(code=1)
+        path = Path(raw_path)
+        if not path.is_file():
+            raise typer.BadParameter(f"Odds file does not exist: {path}")
+        sources.append((source, path.read_text(encoding="utf-8")))
+
+    if odds_dir is not None:
+        if not odds_dir.is_dir():
+            raise typer.BadParameter(f"Odds directory does not exist: {odds_dir}")
+        for path in sorted(item for item in odds_dir.iterdir() if item.is_file()):
+            sources.append((path.stem, path.read_text(encoding="utf-8")))
+    return sources
+
+
+def _print_odds_result(report: OddsReport, result: dict[str, object]) -> None:
+    mode = "dry-run" if result["dry_run"] else "apply"
+    console.print(f"[bold]Odds mode:[/bold] {mode}")
+
+    consensus_table = Table(title="Consensus odds (de-vigged)")
+    consensus_table.add_column("Prospect")
+    consensus_table.add_column("Implied prob", justify="right")
+    consensus_table.add_column("Odds rank", justify="right")
+    consensus_table.add_column("Sources", justify="right")
+    if report.rankings:
+        for ranking in report.rankings:
+            consensus_table.add_row(
+                ranking.prospect_name,
+                f"{ranking.odds_signal:.3f}",
+                str(ranking.odds_rank),
+                str(ranking.n_sources),
+            )
+    else:
+        consensus_table.add_row("No odds extracted", "", "", "")
+    console.print(consensus_table)
+
+    before = result["odds_coverage_before"]
+    after = result["odds_coverage_after"]
+    console.print(f"[bold]Odds coverage:[/bold] {before} -> {after}")
+    console.print(f"[bold]Anchor rows:[/bold] {result['odds_signal_rows']}")
+    if result["wrote_csv"]:
+        console.print("[green]Updated prospects.csv and odds_signals.csv.[/green]")
+    elif report.rankings:
+        console.print("[yellow]Dry-run only; pass --apply to write CSV changes.[/yellow]")
+    else:
+        console.print("[yellow]No consensus odds; CSV files left untouched.[/yellow]")
+    console.print(f"[green]Wrote odds audit:[/green] {result['audit_path']}")
 
 
 def _load_optional_gm_preferences(path: Path) -> dict[str, dict[str, float]]:
