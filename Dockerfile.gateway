@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+ENV HOME=/home/draftcode \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl git nodejs npm \
+    && npm install -g @openai/codex \
+    && useradd --create-home --home-dir /home/draftcode --shell /usr/sbin/nologin draftcode \
+    && mkdir -p /home/draftcode/.codex \
+    && chown -R draftcode:draftcode /home/draftcode \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+
+RUN pip install --no-cache-dir .
+
+USER draftcode
+EXPOSE 8787
+
+CMD ["draftcode", "gateway", "--host", "0.0.0.0", "--port", "8787"]

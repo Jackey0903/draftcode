@@ -31,12 +31,37 @@ flowchart LR
 
 ## Runtime flow
 
-1. Raw contest and public data is stored in an encrypted S3 bucket with versioning.
-2. A Step Functions state machine starts a prediction run. In the current SAM template it invokes the prediction function and writes run metadata to DynamoDB.
-3. The prediction function runs as a Lambda container image. This gives us serverless operations while still allowing packaged data science dependencies and reproducible Docker builds.
-4. The deterministic model produces `predictions.csv`, trace JSON, and a report. The final answer card should be copied from generated artifacts, not hand-filled.
-5. Bedrock is used only after scoring to turn trace evidence into short explanations. It is not the source of truth for the picks.
-6. CloudWatch and X-Ray provide logs and traceability for every run.
+1. `draftcode ingest` normalizes official workbooks into `data/processed`.
+2. `draftcode upload-data` syncs `prospects.csv`, `draft_order.csv`, `team_needs.csv`, and `mock_signals.csv` into an encrypted S3 processed prefix.
+3. Step Functions starts either the single-run `PredictionWorkflow` (`action: simulate`) or the parallel `ScenarioSwarmWorkflow` (`prepare_swarm` -> Distributed Map `simulate_shard` -> `aggregate`), retries transient Lambda failures, and traces the workflow with X-Ray.
+4. The Lambda container downloads the processed CSVs from S3 when `DRAFTCODE_DATA_S3_PREFIX` is set. If the prefix, boto3, or AWS access is unavailable locally, it falls back to `DRAFTCODE_DATA_DIR`.
+5. The Monte Carlo Draft Twin produces the no-duplicate assigned board, per-pick probabilities, and Q1-Q7 milestone answers. In Scenario Swarm mode, each shard first writes mergeable raw counts to `runs/<run_id>/shards/<index>.json`, and the aggregate action merges those counts into one report.
+6. Lambda writes `runs/<run_id>/twin.json` to S3 best-effort, and DynamoDB records a compact run summary: run ID, created time, mode, draws, average confidence, and status.
+7. Bedrock is used only after scoring to turn trace evidence into short explanations. It is not the source of truth for the picks.
+8. CloudWatch and X-Ray provide logs and traceability for every run.
+
+## Local A1 warroom path
+
+Because the current AWS account cannot use Bedrock in the target region, Phase A1
+adds a local-only LLM path through the Codex CLI reverse proxy to gpt-5.5. This does
+not change the cloud diagram, SAM template, HTTP gateway, or tunneling story.
+
+```text
+data/processed + team_dossiers
+  -> draftcode warroom
+  -> gm_agent via codex exec, cached in outputs/llm/gm_preferences.json
+  -> deterministic Monte Carlo simulate reads the cached GM deltas
+  -> explanation_agent writes outputs/llm/explanations.json
+  -> redteam_agent writes outputs/llm/redteam.json
+```
+
+All three agents degrade to deterministic fallbacks when Codex is missing,
+disabled with `DRAFTCODE_LLM_DISABLED=1`, times out, or returns invalid JSON. The
+offline test path is:
+
+```bash
+draftcode warroom --data-dir data/processed --output-dir outputs/llm --offline
+```
 
 ## Why this is not service stacking
 
@@ -85,15 +110,14 @@ flowchart LR
 
 Implemented now:
 
-- `infra/template.yaml`: SAM template with S3, DynamoDB, containerized Lambda, API Gateway, and Step Functions.
+- `infra/template.yaml`: SAM template with S3, DynamoDB, containerized Lambda, API Gateway, the single-run Step Functions workflow, and the Distributed Map Scenario Swarm workflow.
 - `Dockerfile.lambda`: Lambda container image build.
-- `src/draftcode/lambda_handler.py`: supports API Gateway and direct Step Functions invocation.
-- `make sam-validate`: validates the infrastructure template.
+- `src/draftcode/lambda_handler.py`: supports API Gateway, direct Step Functions invocation, simulate mode, Scenario Swarm shard/aggregate actions, S3 input download, and best-effort S3/DynamoDB output writes.
+- `src/draftcode/cli.py`: `upload-data` command for syncing processed CSVs to S3.
+- `make sam-validate`, `make upload-data`, and `make sam-deploy`: local validation, data upload, and authenticated deployment helpers.
 
 Next if time allows:
 
-- Add S3 writeback for final prediction artifacts.
-- Add milestone calculators and Monte Carlo scenario outputs.
 - Add a Bedrock explanation Lambda that reads trace JSON and emits concise pick rationales.
 - Add a CloudFront-hosted static report for roadshow fallback.
 - Add EventBridge schedule or manual one-click workflow execution.

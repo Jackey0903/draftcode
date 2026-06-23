@@ -2,16 +2,41 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: DraftCode serverless NBA draft intelligence architecture.
 
+Parameters:
+  DraftDataS3Prefix:
+    Type: String
+    Default: ""
+    Description: Optional S3 prefix containing processed draft input CSVs.
+  DraftCodeDraws:
+    Type: String
+    Default: "1000"
+    AllowedPattern: "^[0-9]+$"
+    Description: Default Monte Carlo draw count for simulation runs.
+  DraftCodeSeed:
+    Type: String
+    Default: "42"
+    AllowedPattern: "^[0-9]+$"
+    Description: Default random seed for deterministic simulation runs.
+  DraftCodeSwarmShards:
+    Type: String
+    Default: "10"
+    AllowedPattern: "^[0-9]+$"
+    Description: Default Scenario Swarm shard count.
+
 Globals:
   Function:
     Architectures:
       - arm64
-    Timeout: 30
-    MemorySize: 512
+    Timeout: 300
+    MemorySize: 2048
     Tracing: Active
     Environment:
       Variables:
         DRAFTCODE_DATA_DIR: /var/task/data/sample
+        DRAFTCODE_DATA_S3_PREFIX: !Ref DraftDataS3Prefix
+        DRAFTCODE_DRAWS: !Ref DraftCodeDraws
+        DRAFTCODE_SEED: !Ref DraftCodeSeed
+        DRAFTCODE_SWARM_SHARDS: !Ref DraftCodeSwarmShards
         DRAFTCODE_AWS_REGION: !Ref AWS::Region
         DRAFTCODE_S3_BUCKET: !Ref DraftDataBucket
         DRAFTCODE_DYNAMODB_TABLE: !Ref PredictionRunsTable
@@ -62,7 +87,9 @@ Resources:
     Properties:
       PackageType: Image
       Description: Generates auditable NBA draft predictions.
-      ReservedConcurrentExecutions: 5
+      # ReservedConcurrentExecutions omitted: a fresh account's default Lambda
+      # concurrency limit is 10; reserving any capacity drops unreserved below the
+      # required minimum of 10 and fails creation. Re-enable after a limit increase.
       Policies:
         - AWSLambdaBasicExecutionRole
         - S3ReadPolicy:
@@ -75,6 +102,15 @@ Resources:
                 - bedrock:InvokeModel
                 - bedrock:InvokeModelWithResponseStream
               Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/*
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+              Resource: !Sub "${DraftDataBucket.Arn}/runs/*"
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+              Resource: !GetAtt DraftDataBucket.Arn
       Events:
         PredictionApi:
           Type: Api
@@ -102,7 +138,7 @@ Resources:
             Parameters:
               FunctionName: !GetAtt PredictionFunction.Arn
               Payload:
-                action: predict
+                action: simulate
                 run_mode: workflow
             ResultPath: $.prediction
             Retry:
@@ -124,18 +160,122 @@ Resources:
                   S.$: $.prediction.Payload.run_id
                 created_at:
                   S.$: $.prediction.Payload.generated_at
-                prediction_count:
-                  N.$: States.Format('{}', $.prediction.Payload.prediction_count)
+                mode:
+                  S.$: $.prediction.Payload.mode
+                draws:
+                  N.$: States.Format('{}', $.prediction.Payload.draws)
                 average_confidence:
                   N.$: States.Format('{}', $.prediction.Payload.average_confidence)
                 status:
-                  S: SUCCEEDED
+                  S: completed
             End: true
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref PredictionFunction
         - DynamoDBWritePolicy:
             TableName: !Ref PredictionRunsTable
+
+  ScenarioSwarmWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: STANDARD
+      Tracing:
+        Enabled: true
+      Definition:
+        Comment: Distributed Map workflow for parallel Monte Carlo Scenario Swarm runs.
+        StartAt: PrepareRun
+        States:
+          PrepareRun:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !GetAtt PredictionFunction.Arn
+              Payload:
+                action: prepare_swarm
+                execution_input.$: $
+            ResultPath: $.prepared
+            Retry:
+              - ErrorEquals:
+                  - Lambda.ServiceException
+                  - Lambda.AWSLambdaException
+                  - Lambda.SdkClientException
+                IntervalSeconds: 2
+                MaxAttempts: 3
+                BackoffRate: 2
+            Next: ScenarioSwarm
+          ScenarioSwarm:
+            Type: Map
+            ItemsPath: $.prepared.Payload.shards
+            MaxConcurrency: 10
+            ResultPath: $.shards
+            ItemProcessor:
+              ProcessorConfig:
+                Mode: DISTRIBUTED
+                ExecutionType: STANDARD
+              StartAt: RunShard
+              States:
+                RunShard:
+                  Type: Task
+                  Resource: arn:aws:states:::lambda:invoke
+                  Parameters:
+                    FunctionName: !GetAtt PredictionFunction.Arn
+                    Payload.$: $
+                  Retry:
+                    - ErrorEquals:
+                        - Lambda.ServiceException
+                        - Lambda.AWSLambdaException
+                        - Lambda.SdkClientException
+                      IntervalSeconds: 2
+                      MaxAttempts: 3
+                      BackoffRate: 2
+                  End: true
+            Next: Aggregate
+          Aggregate:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !GetAtt PredictionFunction.Arn
+              Payload:
+                action: aggregate
+                run_id.$: $.prepared.Payload.run_id
+                bucket.$: $.prepared.Payload.bucket
+                shards_prefix.$: $.prepared.Payload.shards_prefix
+                draws.$: $.prepared.Payload.effective_draws
+                seed.$: $.prepared.Payload.seed
+                temperature.$: $.prepared.Payload.temperature
+                top_k.$: $.prepared.Payload.top_k
+                weight_jitter.$: $.prepared.Payload.weight_jitter
+                signal_jitter.$: $.prepared.Payload.signal_jitter
+                need_jitter.$: $.prepared.Payload.need_jitter
+                board_jitter.$: $.prepared.Payload.board_jitter
+                low_confidence_threshold.$: $.prepared.Payload.low_confidence_threshold
+                wingspan_threshold.$: $.prepared.Payload.wingspan_threshold
+            ResultPath: $.aggregate
+            Retry:
+              - ErrorEquals:
+                  - Lambda.ServiceException
+                  - Lambda.AWSLambdaException
+                  - Lambda.SdkClientException
+                IntervalSeconds: 2
+                MaxAttempts: 3
+                BackoffRate: 2
+            End: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref PredictionFunction
+        - DynamoDBWritePolicy:
+            TableName: !Ref PredictionRunsTable
+        - S3ReadPolicy:
+            BucketName: !Ref DraftDataBucket
+        - S3WritePolicy:
+            BucketName: !Ref DraftDataBucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - states:StartExecution
+                - states:DescribeExecution
+                - states:StopExecution
+              Resource: "*"
 
 Outputs:
   PredictionApiUrl:
@@ -144,6 +284,9 @@ Outputs:
   PredictionWorkflowArn:
     Description: Step Functions workflow for auditable prediction runs.
     Value: !Ref PredictionWorkflow
+  ScenarioSwarmWorkflowArn:
+    Description: Step Functions Distributed Map workflow for Scenario Swarm runs.
+    Value: !Ref ScenarioSwarmWorkflow
   DraftDataBucketName:
     Description: Encrypted S3 bucket for raw, processed, and prediction artifacts.
     Value: !Ref DraftDataBucket

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DraftCode · 2026 NBA 选秀作战室</title>
+<style>
+  :root{
+    --bg:#0a0e1a; --bg2:#10172a; --card:#141c30; --card2:#1b2540;
+    --line:rgba(255,255,255,.08); --txt:#eef2fb; --mut:#8b97b4; --dim:#5a6b8c;
+    --accent:#e63946; --gold:#f4a93b; --teal:#22d3a8; --blue:#3b82f6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:linear-gradient(180deg,#070b14 0%,#0a0e1a 40%,#0b1226 100%);
+    color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 22px 80px}
+  /* hero */
+  .hero{padding:54px 0 30px;border-bottom:1px solid var(--line);position:relative}
+  .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:16px}
+  .kicker .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px var(--teal)}
+  h1{font-size:42px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+  h1 .grad{background:linear-gradient(92deg,#fff 10%,#9db4ff 60%,#f4a93b 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--mut);font-size:16.5px;margin-top:14px;max-width:680px}
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:30px}
+  .metric{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .metric .n{font-size:26px;font-weight:800;letter-spacing:-.01em}
+  .metric .l{font-size:12.5px;color:var(--mut);margin-top:3px}
+  .metric .n.g{color:var(--gold)} .metric .n.t{color:var(--teal)} .metric .n.b{color:#7aa2ff}
+  /* agents */
+  .sec-h{display:flex;align-items:baseline;gap:12px;margin:46px 0 18px}
+  .sec-h h2{font-size:21px;font-weight:700;letter-spacing:-.01em}
+  .sec-h .tag{font-size:12px;color:var(--mut)}
+  .agents{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .agent{background:linear-gradient(165deg,var(--card2),var(--card));border:1px solid var(--line);
+    border-radius:16px;padding:20px;position:relative;overflow:hidden}
+  .agent::before{content:"";position:absolute;inset:0 0 auto 0;height:3px}
+  .agent.a1::before{background:var(--teal)} .agent.a2::before{background:var(--gold)} .agent.a3::before{background:var(--blue)}
+  .agent .ic{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px}
+  .agent.a1 .ic{color:var(--teal)} .agent.a2 .ic{color:var(--gold)} .agent.a3 .ic{color:#7aa2ff}
+  .agent .big{font-size:17px;font-weight:700;margin-bottom:6px}
+  .agent p{font-size:13.5px;color:var(--mut);line-height:1.55}
+  .agent .chip{display:inline-block;margin-top:12px;font-size:12px;padding:4px 10px;border-radius:8px;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--txt)}
+  /* board */
+  .board{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .pick{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);
+    border-left-width:4px;border-radius:11px;padding:11px 14px;transition:transform .12s,background .12s}
+  .pick:hover{transform:translateX(3px);background:var(--card2)}
+  .pick .no{font-size:19px;font-weight:800;color:var(--mut);min-width:30px;text-align:center}
+  .pick .team{font-size:11.5px;font-weight:700;letter-spacing:.05em;min-width:38px}
+  .pick .body{flex:1;min-width:0}
+  .pick .name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pick .name .trade{font-size:10px;font-weight:700;color:var(--gold);border:1px solid var(--gold);
+    border-radius:5px;padding:1px 5px;margin-left:7px;vertical-align:1px}
+  .pick .conf{display:flex;align-items:center;gap:8px;margin-top:5px}
+  .pick .bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+  .pick .bar i{display:block;height:100%;border-radius:3px}
+  .pick .pct{font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums;min-width:32px;text-align:right}
+  /* milestones */
+  .mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .ms{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .ms .q{font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.04em}
+  .ms .d{font-size:12px;color:var(--mut);margin:7px 0 12px;line-height:1.45;min-height:50px}
+  .ms .a{font-size:24px;font-weight:800;letter-spacing:-.01em}
+  .ms .a small{font-size:13px;color:var(--mut);font-weight:600}
+  .foot{margin-top:50px;padding-top:24px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px}
+  .foot b{color:var(--mut)}
+  @media(max-width:760px){.metrics,.agents,.mgrid{grid-template-columns:repeat(2,1fr)}.board{grid-template-columns:1fr}h1{font-size:32px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="kicker"><span class="dot"></span>AWS Summit Shanghai 2026 · 模拟球探</div>
+    <h1><span class="grad">DraftCode 选秀作战室</span></h1>
+    <p class="sub">蒙特卡洛概率孪生 · 30 位独立人格 GM · 实时情报与多源市场融合 —— 为 2026 首轮每个顺位给出带置信度、可解释、可审计的预测。</p>
+    <div class="metrics">
+      <div class="metric"><div class="n">1500</div><div class="l">蒙特卡洛模拟次数</div></div>
+      <div class="metric"><div class="n g">30</div><div class="l">独立人格 GM Agent</div></div>
+      <div class="metric"><div class="n t">2 源</div><div class="l">实时聚合 mock(CBS·SI)</div></div>
+      <div class="metric"><div class="n b">gpt-5.5</div><div class="l">Agent 推理引擎</div></div>
+    </div>
+  </header>
+
+  <div class="sec-h"><h2>三大 Agent 实时驱动</h2><span class="tag">数据更新于选秀当日</span></div>
+  <div class="agents">
+    <div class="agent a1">
+      <div class="ic">实时情报 · 交易换签</div>
+      <div class="big">字母哥交易热火</div>
+      <p>抓取当日交易新闻，gpt-5.5 提取出第 13 顺位由 Miami 易主 Milwaukee，自动更新签位并重跑预测。</p>
+      <span class="chip">pick 13 · MIA → MIL</span>
+    </div>
+    <div class="agent a2">
+      <div class="ic">多源市场 · 共识聚合</div>
+      <div class="big">状元被市场修正</div>
+      <p>聚合 CBS、SI 多家 mock，把纯天赋模型的状元 Boozer 修正为市场共识 AJ·迪班萨，覆盖 19→30 人。</p>
+      <span class="chip">状元 · Boozer → 迪班萨</span>
+    </div>
+    <div class="agent a3">
+      <div class="ic">双信号背离 · 分歧即 alpha</div>
+      <div class="big">天赋 vs 市场</div>
+      <p>对每名球员同时算天赋与市场两路信号，背离处触发深度推理，把分歧变成超额预测力。</p>
+      <span class="chip">背离 5 · 锁定 13</span>
+    </div>
+  </div>
+
+  <div class="sec-h"><h2>首轮 30 顺位预测</h2><span class="tag">条形为命中置信度（蒙特卡洛边际概率）</span></div>
+  <div class="board" id="board"></div>
+
+  <div class="sec-h"><h2>7 道里程碑预测</h2><span class="tag">同一批模拟顺手算出 · 28 分</span></div>
+  <div class="mgrid" id="ms"></div>
+
+  <div class="foot">
+    <b>DraftCode</b> · Monte Carlo Draft Twin + 30 GM Inline Agents + 实时情报/多源市场 ·
+    AWS Serverless（S3 / DynamoDB / Lambda 容器 / Step Functions Distributed Map）+ gpt-5.5 网关（EC2）·
+    <b>每个预测可追溯、可重跑。</b>
+  </div>
+</div>
+
+<script>
+const TEAM={WAS:["华盛顿","#E4123B"],UTA:["爵士","#F9A01B"],MEM:["灰熊","#6189C4"],CHI:["公牛","#CE1141"],
+LAC:["快船","#3b82f6"],BKN:["篮网","#9aa3b8"],SAC:["国王","#7b62b3"],ATL:["老鹰","#E03A3E"],
+DAL:["独行侠","#3a7bd5"],MIL:["雄鹿","#2bb673"],GSW:["勇士","#FFC72C"],OKC:["雷霆","#1aa0e0"],
+MIA:["热火","#d4316b"],CHA:["黄蜂","#7a5fd0"],TOR:["猛龙","#E03A3E"],SAS:["马刺","#b8c0cc"],
+DET:["活塞","#E4123B"],PHI:["76人","#3a7bd5"],NYK:["尼克斯","#F58426"],LAL:["湖人","#a06fe0"],
+DEN:["掘金","#FEC524"],BOS:["凯尔特人","#2bb673"],MIN:["森林狼","#4a9fd4"],CLE:["骑士","#c0204e"]};
+const PICKS=[[1,'WAS','AJ 迪班萨',0.23,0],[2,'UTA','达林 彼得森',0.17,0],[3,'MEM','卡梅隆 布泽尔',0.23,0],
+[4,'CHI','凯莱布 威尔逊',0.17,0],[5,'LAC','基顿 瓦格勒',0.13,0],[6,'BKN','金斯顿 弗莱明斯',0.15,0],
+[7,'SAC','亚克塞尔 伦德伯格',0.20,0],[8,'ATL','纳撒尼尔 阿门特',0.10,0],[9,'DAL','达柳斯 阿卡夫',0.10,0],
+[10,'MIL','阿达伊 马拉',0.27,0],[11,'GSW','汉内斯 施泰因巴赫',0.09,0],[12,'OKC','小莫雷兹 约翰逊',0.14,0],
+[13,'MIL','小拉巴伦 菲隆',0.12,1],[14,'CHA','卡梅隆 卡尔',0.19,0],[15,'CHI','杰登 昆坦斯',0.16,0],
+[16,'MEM','克里斯蒂安 安德森',0.10,0],[17,'OKC','马利克 托马斯',0.11,0],[18,'CHA','以赛亚 埃文斯',0.10,0],
+[19,'TOR','埃布卡 奥科里',0.23,0],[20,'SAS','戴林 斯温',0.22,0],[21,'DET','克里斯 塞纳克',0.17,0],
+[22,'PHI','科阿 皮特',0.22,0],[23,'ATL','泰勒 比洛多',0.13,0],[24,'NYK','本内特 斯特茨',0.12,0],
+[25,'LAL','亨利 维萨尔',0.18,0],[26,'DEN','亚历克斯 卡拉班',0.12,0],[27,'BOS','马利奇 布朗',0.08,0],
+[28,'MIN','莱恩 康韦尔',0.19,0],[29,'CLE','阿马里 阿伦',0.11,0],[30,'DAL','布雷登 伯里斯',0.28,0]];
+const MS=[["Q1","第 4–14 顺位中，臂展减赤脚身高 ≥5 吋的超长臂展球员",4,"人"],
+["Q2","训练营助跑弹跳前 3 中，首轮被选中",1,"人"],["Q3","首轮 30 人中主打中锋的总数",2,"个"],
+["Q4","第 4–30 顺位首个中锋落点",13,"顺位"],["Q5","首轮国际球员总数",3,"人"],
+["Q6","贡献首轮球员最多的机构","密歇根大学",""],["Q7","训练营手掌长度前 5 中，首轮被选中",2,"人"]];
+const bd=document.getElementById('board');
+PICKS.forEach(([no,ab,nm,p,tr])=>{const[tn,tc]=TEAM[ab]||["其他","#888"];
+  const pct=Math.round(p*100);const col=p>=.22?"#2bb673":p>=.15?"#f4a93b":"#e05a6b";
+  bd.insertAdjacentHTML('beforeend',`<div class="pick" style="border-left-color:${tc}">
+    <div class="no">${no}</div><div class="team" style="color:${tc}">${tn}</div>
+    <div class="body"><div class="name">${nm}${tr?'<span class="trade">交易签</span>':''}</div>
+    <div class="conf"><div class="bar"><i style="width:${Math.max(8,pct*2.6)}%;background:${col}"></i></div>
+    <div class="pct">${pct}%</div></div></div></div>`);});
+const ms=document.getElementById('ms');
+MS.forEach(([q,d,a,u])=>{ms.insertAdjacentHTML('beforeend',`<div class="ms"><div class="q">${q}</div>
+  <div class="d">${d}</div><div class="a">${a}${u?` <small>${u}</small>`:''}</div></div>`);});
+</script>
+</body>
+</html>

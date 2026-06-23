@@ -6,6 +6,6 @@ COPY pyproject.toml README.md ./
 COPY src ./src
 COPY data/sample ./data/sample
 
-RUN python -m pip install --no-cache-dir .
+RUN python -m pip install --no-cache-dir ".[official,aws]"
 
 CMD ["draftcode.lambda_handler.handler"]

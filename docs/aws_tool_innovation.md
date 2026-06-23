@@ -48,7 +48,7 @@ The NBA draft is not a single deterministic ranking. One surprise pick changes e
 ### AWS tool use
 
 - **Step Functions** orchestrates the run as explicit states: ingest, validate, simulate, persist, explain.
-- **Step Functions Distributed Map** is the target pattern for Monte Carlo scenarios: each scenario samples different source weights, team needs, and position scarcity assumptions.
+- **Step Functions Distributed Map** runs Monte Carlo shards in parallel: each shard samples different source weights, team needs, and position scarcity assumptions.
 - **Lambda container image** runs each scenario with the same packaged code and dependencies.
 - **Reserved concurrency** caps spend and protects the account during live reruns.
 
@@ -104,7 +104,7 @@ Bedrock is used where it adds value: summarizing evidence and making the roadsho
 | --- | --- | --- |
 | S3 | Store files | Versioned evidence ledger for every prediction run |
 | Lambda | Run an API handler | Containerized scenario worker for reproducible data science |
-| Step Functions | Chain functions | Draft-simulation control plane and future scenario swarm |
+| Step Functions | Chain functions | Draft-simulation control plane and Scenario Swarm orchestrator |
 | Distributed Map | Batch parallelism | Monte Carlo draft universe generator |
 | DynamoDB | Store app records | Run ledger and answer-card audit index |
 | Bedrock | Chatbot | Grounded explanation layer behind a deterministic trace |
@@ -124,16 +124,15 @@ Implemented in this repo:
 - DynamoDB run ledger.
 - Lambda container image.
 - API Gateway endpoint.
-- Step Functions workflow.
+- Step Functions single-run workflow.
+- Step Functions Distributed Map Scenario Swarm workflow.
 - X-Ray tracing and CloudWatch logs.
 - SAM IaC.
 
 Designed as next extension:
 
-- Step Functions Distributed Map for Monte Carlo fanout.
 - Bedrock Knowledge Base over scouting/news/mock sources.
 - Bedrock Guardrails for explanation generation.
-- Run-level S3 artifact writeback.
 
 ## Sources
 

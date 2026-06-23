@@ -19,6 +19,29 @@ class Prospect:
     rebound_rate: float
     stock_rate: float
     notes: str = ""
+    barefoot_height_in: float | None = None
+    hand_length_in: float | None = None
+    hand_width_in: float | None = None
+    standing_reach_in: float | None = None
+    weight_lb: float | None = None
+    max_vertical_in: float | None = None
+    standing_vertical_in: float | None = None
+    school: str = ""
+    country: str = ""
+    is_international: bool = False
+    is_center: bool = False
+    talent_composite: float | None = None
+    espn_rank: int | None = None
+    model_pick_low: int | None = None
+    board_source: str = ""
+    talent_rank: int | None = None
+    market_rank: float | None = None
+    talent_signal: float | None = None
+    market_signal: float | None = None
+    divergence_gap: int | None = None
+    divergence_type: str = ""
+    divergence_reason: str = ""
+    fused_score: float | None = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +49,8 @@ class Team:
     pick: int
     team: str
     abbreviation: str
+    original_team: str = ""
+    via_trade: bool = False
 
 
 @dataclass(frozen=True)
