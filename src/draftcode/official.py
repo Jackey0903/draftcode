@@ -300,8 +300,9 @@ def ingest_official(
     handbook_path = source_dir / "handbook.xlsx"
 
     pool = _read_pool(answer_card_path)
-    pool_by_index = {prospect.pool_index: prospect for prospect in pool}
     entrant_table = _read_named_table(prospects_path, "参选人名单", "姓名")
+    pool = _filter_pool_to_entrants(pool, entrant_table)
+    pool_by_index = {prospect.pool_index: prospect for prospect in pool}
     measurement_table = _read_named_table(prospects_path, "人体测量数据", "球员")
     athletic_table = _read_named_table(prospects_path, "力量与敏捷性", "球员")
     shooting_table = _read_named_table(prospects_path, "投篮训练", "球员")
@@ -412,6 +413,59 @@ def _read_pool(path: Path) -> list[PoolProspect]:
             )
         )
     return sorted(pool, key=lambda prospect: prospect.pool_index)
+
+
+def _filter_pool_to_entrants(
+    pool: list[PoolProspect], entrant_table: RawTable
+) -> list[PoolProspect]:
+    """Restrict the answer-card pool to the official entrant list (参选人名单).
+
+    The ``球员池_勿修改`` sheet carries combine-only attendees and a duplicate
+    that are NOT on the official roster; only entrants can actually be drafted.
+    When a name appears more than once in the pool, keep the row whose school
+    matches the entrant record (then a non-placeholder school, then lowest
+    pool index) so the polluted placeholder copy is dropped.
+    """
+    entrants = entrant_table.rows_by_name
+    chosen: dict[str, PoolProspect] = {}
+    for prospect in pool:
+        if prospect.name not in entrants:
+            continue
+        incumbent = chosen.get(prospect.name)
+        if incumbent is None or _is_better_pool_match(
+            prospect, incumbent, entrants[prospect.name]
+        ):
+            chosen[prospect.name] = prospect
+    return sorted(chosen.values(), key=lambda item: item.pool_index)
+
+
+def _is_better_pool_match(
+    candidate: PoolProspect,
+    incumbent: PoolProspect,
+    entrant_row: dict[str, Any],
+) -> bool:
+    entrant_school = clean_text(entrant_row.get("学校/俱乐部"))
+    candidate_match = _school_matches(candidate.school, entrant_school)
+    incumbent_match = _school_matches(incumbent.school, entrant_school)
+    if candidate_match != incumbent_match:
+        return candidate_match
+    candidate_real = _is_real_school(candidate.school)
+    incumbent_real = _is_real_school(incumbent.school)
+    if candidate_real != incumbent_real:
+        return candidate_real
+    return candidate.pool_index < incumbent.pool_index
+
+
+def _is_real_school(school: str) -> bool:
+    return bool(school) and school not in {"-", "—", "－"}
+
+
+def _school_matches(school: str, entrant_school: str) -> bool:
+    return (
+        _is_real_school(school)
+        and _is_real_school(entrant_school)
+        and school == entrant_school
+    )
 
 
 def _read_named_table(path: Path, sheet_name: str, key_column: str) -> RawTable:

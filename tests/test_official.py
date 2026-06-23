@@ -27,8 +27,10 @@ def test_normalizer_outputs_engine_ready_files(tmp_path: Path) -> None:
     prospects = _read_csv(out_dir / "prospects.csv")
     draft_order = _read_csv(out_dir / "draft_order.csv")
 
-    assert report["pool_count"] == 124
-    assert len(prospects) == 124
+    # Pool is restricted to the 107 official 参选人名单 entrants (combine-only
+    # attendees and the duplicate 阿门特 placeholder are excluded).
+    assert report["pool_count"] == 107
+    assert len(prospects) == 107
     assert len(draft_order) == 30
     assert set(PROSPECT_COLUMNS) <= set(prospects[0])
     assert (out_dir / "team_needs.csv").exists()
@@ -55,8 +57,26 @@ def test_key_anchors(tmp_path: Path) -> None:
     assert by_id["p011"]["divergence_reason"]
     assert by_id["p001"]["market_rank"] == "1"
     assert by_id["p001"]["talent_rank"] == "2"
-    assert sum(row["is_center"] == "true" for row in rows) == 14
+    assert sum(row["is_center"] == "true" for row in rows) == 11
     assert sum(row["is_international"] == "true" for row in rows) >= 11
+
+
+def test_pool_is_official_entrants_only(tmp_path: Path) -> None:
+    out_dir = tmp_path / "processed"
+    ingest_official(SOURCE_DIR, out_dir, use_llm_divergence=False)
+    rows = _read_csv(out_dir / "prospects.csv")
+    by_id = {row["prospect_id"]: row for row in rows}
+
+    # Exactly the 107 entrants, each once (no combine-only attendees, no dupes).
+    names = [row["name"] for row in rows]
+    assert len(rows) == 107
+    assert len(set(names)) == 107
+    # The duplicate 阿门特 collapses to the real 田纳西大学 entrant (序号 84),
+    # and the polluted placeholder copy (序号 67) is dropped.
+    assert "p084" in by_id and by_id["p084"]["school"] == "田纳西大学"
+    assert "p067" not in by_id
+    # A combine-only non-entrant must not appear.
+    assert "阿马里 阿伦" not in names
 
 
 def test_engine_can_load_official_prospects(tmp_path: Path) -> None:
@@ -65,7 +85,7 @@ def test_engine_can_load_official_prospects(tmp_path: Path) -> None:
 
     prospects = load_prospects(out_dir)
 
-    assert len(prospects) == 124
+    assert len(prospects) == 107
     assert prospects[0].prospect_id == "p001"
 
 
