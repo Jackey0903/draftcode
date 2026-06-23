@@ -371,6 +371,27 @@ def odds(
 
 
 @app.command()
+def rerank(
+    data_dir: Path = typer.Option(
+        Path("data/processed"),
+        help="Directory containing processed prospects.csv.",
+    ),
+) -> None:
+    """Re-rank consensus for ALL players by fusing talent + market + odds.
+
+    Run after market/odds so non-handbook market darlings are no longer buried.
+    """
+    from draftcode.rerank import fuse_consensus_ranks
+
+    result = fuse_consensus_ranks(data_dir)
+    console.print(
+        f"[green]Re-ranked {result['count']} prospects by fused talent+market+odds.[/green]"
+    )
+    for rank, name in result.get("top5", []):
+        console.print(f"  {rank}. {name}")
+
+
+@app.command()
 def gateway(
     host: str = typer.Option("0.0.0.0", help="Host interface for the Codex HTTP gateway."),
     port: int = typer.Option(8787, help="Port for the Codex HTTP gateway."),

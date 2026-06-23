@@ -301,9 +301,12 @@ def ingest_official(
     answer_card_path = source_dir / "answer_card_template.xlsx"
     handbook_path = source_dir / "handbook.xlsx"
 
+    # Use the full official answer-card pool (球员池_勿修改). Players the market
+    # never rates are not filtered out here; the post-market/odds re-ranking
+    # (draftcode rerank) sinks them naturally, so non-entrants fall out of the
+    # top-30 instead of being hard-excluded.
     pool = _read_pool(answer_card_path)
     entrant_table = _read_named_table(prospects_path, "参选人名单", "姓名")
-    pool = _filter_pool_to_entrants(pool, entrant_table)
     pool_by_index = {prospect.pool_index: prospect for prospect in pool}
     measurement_table = _read_named_table(prospects_path, "人体测量数据", "球员")
     athletic_table = _read_named_table(prospects_path, "力量与敏捷性", "球员")
