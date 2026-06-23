@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import html
+import os
 from pathlib import Path
 
 import typer
@@ -9,6 +10,8 @@ from rich.console import Console
 from rich.table import Table
 
 from draftcode.config import get_settings
+from draftcode.dossier import TeamDossier, load_team_dossiers
+from draftcode.intel import IntelReport, apply_intel, extract_intel
 from draftcode.io import (
     load_draft_order,
     load_mock_signals,
@@ -16,11 +19,20 @@ from draftcode.io import (
     load_team_needs,
     write_twin_report,
 )
+from draftcode.market import MarketReport, aggregate_mocks, apply_market
 from draftcode.pipeline import run_prediction
 from draftcode.simulate import MonteCarloDraftTwin, SimulationConfig
+from draftcode.warroom import run_warroom
 
 app = typer.Typer(help="NBA draft prediction agent CLI.")
 console = Console()
+DEFAULT_DOSSIER_PATH = Path("data/dossiers/team_dossiers.json")
+UPLOAD_DATA_FILES = (
+    "prospects.csv",
+    "draft_order.csv",
+    "team_needs.csv",
+    "mock_signals.csv",
+)
 
 
 @app.callback()
@@ -91,6 +103,7 @@ def simulate(
         team_needs=load_team_needs(resolved_data_dir),
         mock_signals=load_mock_signals(resolved_data_dir),
         config=config,
+        dossiers=_load_default_dossiers(),
     ).run()
     write_twin_report(resolved_output, report)
 
@@ -139,6 +152,153 @@ def simulate(
 
 
 @app.command()
+def warroom(
+    data_dir: Path = typer.Option(
+        Path("data/processed"),
+        help="Directory containing processed draft input CSVs.",
+    ),
+    dossier_path: Path = typer.Option(
+        DEFAULT_DOSSIER_PATH,
+        help="Team dossier JSON path.",
+    ),
+    output_dir: Path = typer.Option(
+        Path("outputs/llm"),
+        help="Directory for LLM-once cache artifacts.",
+    ),
+    draws: int = typer.Option(1000, help="Number of Monte Carlo scenarios."),
+    seed: int = typer.Option(42, help="Random seed for deterministic simulation."),
+    max_workers: int = typer.Option(4, help="Concurrent agent workers."),
+    offline: bool = typer.Option(
+        False,
+        "--offline",
+        help="Skip all LLM calls and write deterministic fallback artifacts.",
+    ),
+) -> None:
+    """Run the local DraftCode war-room agent pipeline."""
+    summary = run_warroom(
+        data_dir=data_dir,
+        dossier_path=dossier_path,
+        output_dir=output_dir,
+        draws=draws,
+        seed=seed,
+        max_workers=max_workers,
+        offline=offline,
+    )
+
+    status_table = Table(title="DraftCode warroom")
+    status_table.add_column("Stage")
+    status_table.add_column("Total", justify="right")
+    status_table.add_column("LLM", justify="right")
+    status_table.add_column("Fallback", justify="right")
+    for stage_name in ["gm", "explanations", "redteam"]:
+        stage = summary[stage_name]
+        status_table.add_row(
+            stage_name,
+            str(stage["total"]),
+            str(stage["llm"]),
+            str(stage["fallback"]),
+        )
+    console.print(status_table)
+    console.print(f"[green]Wrote GM preferences:[/green] {summary['paths']['gm_preferences']}")
+    console.print(f"[green]Wrote explanations:[/green] {summary['paths']['explanations']}")
+    console.print(f"[green]Wrote redteam:[/green] {summary['paths']['redteam']}")
+
+
+@app.command()
+def intel(
+    data_dir: Path = typer.Option(
+        Path("data/processed"),
+        help="Directory containing processed draft_order/team_needs CSVs.",
+    ),
+    news_text: str | None = typer.Option(
+        None,
+        "--news-text",
+        help="Externally fetched news text to structure and apply.",
+    ),
+    news_file: Path | None = typer.Option(
+        None,
+        "--news-file",
+        help="Path to externally fetched news text.",
+    ),
+    source: str = typer.Option("", "--source", help="Optional source label or URL for audit."),
+    apply_changes: bool = typer.Option(
+        False,
+        "--apply",
+        help="Write draft_order.csv/team_needs.csv. Default is dry-run preview.",
+    ),
+) -> None:
+    """Extract real-time trade intel from supplied text and preview/apply CSV changes."""
+    if (news_text is None) == (news_file is None):
+        console.print("[red]error:[/red] pass exactly one of --news-text or --news-file")
+        raise typer.Exit(code=1)
+
+    resolved_source = source
+    if news_file is not None:
+        if not news_file.is_file():
+            raise typer.BadParameter(f"News file does not exist: {news_file}")
+        news_text = news_file.read_text(encoding="utf-8")
+        resolved_source = resolved_source or str(news_file)
+
+    assert news_text is not None
+    draft_order = load_draft_order(data_dir)
+    report = extract_intel(news_text, draft_order, source=resolved_source)
+    result = apply_intel(report, data_dir, dry_run=not apply_changes)
+    _print_intel_result(report, result)
+
+
+@app.command()
+def market(
+    data_dir: Path = typer.Option(
+        Path("data/processed"),
+        help="Directory containing processed prospects/draft_order/mock_signals CSVs.",
+    ),
+    mock_file: list[str] | None = typer.Option(
+        None,
+        "--mock-file",
+        help="Externally fetched mock draft as source=path. May be passed multiple times.",
+    ),
+    mock_dir: Path | None = typer.Option(
+        None,
+        "--mock-dir",
+        help="Directory of externally fetched mock drafts; filename stem is used as source.",
+    ),
+    apply_changes: bool = typer.Option(
+        False,
+        "--apply",
+        help="Write prospects.csv/mock_signals.csv. Default is dry-run preview.",
+    ),
+) -> None:
+    """Aggregate externally supplied mock drafts into consensus market signals."""
+    mocks = _load_market_mocks(mock_file or [], mock_dir)
+    if not mocks:
+        console.print("[red]error:[/red] pass --mock-file source=path or --mock-dir dir")
+        raise typer.Exit(code=1)
+
+    prospect_names = _read_market_prospect_names(data_dir)
+    report = aggregate_mocks(mocks, prospect_names)
+    result = apply_market(report, data_dir, dry_run=not apply_changes)
+    _print_market_result(report, result)
+
+
+@app.command()
+def gateway(
+    host: str = typer.Option("0.0.0.0", help="Host interface for the Codex HTTP gateway."),
+    port: int = typer.Option(8787, help="Port for the Codex HTTP gateway."),
+) -> None:
+    """Serve the local Codex CLI as an OpenAI-compatible HTTP endpoint."""
+    from draftcode.codex_gateway import serve
+
+    console.print(f"[green]Starting DraftCode Codex gateway:[/green] http://{host}:{port}")
+    console.print(
+        "[yellow]Set DRAFTCODE_GATEWAY_KEY before exposing this endpoint publicly.[/yellow]"
+    )
+    try:
+        serve(host=host, port=port)
+    except KeyboardInterrupt:
+        console.print("[yellow]Stopped DraftCode Codex gateway.[/yellow]")
+
+
+@app.command()
 def answer(
     data_dir: Path = typer.Option(
         Path("data/processed"),
@@ -166,6 +326,7 @@ def answer(
         team_needs=load_team_needs(data_dir),
         mock_signals=load_mock_signals(data_dir),
         config=config,
+        dossiers=_load_default_dossiers(),
     ).run()
     write_answer_card(template=template, out=out, report=report, team_id=team_id)
 
@@ -221,6 +382,98 @@ def ingest(
 
     report = ingest_official(source, out)
     _print_ingest_report(report)
+
+
+@app.command("upload-data")
+def upload_data(
+    source: Path = typer.Option(
+        Path("data/processed"),
+        help="Directory containing processed prospects/draft_order/team_needs/mock_signals CSVs.",
+    ),
+    bucket: str | None = typer.Option(
+        None,
+        "--bucket",
+        "-b",
+        help="Destination S3 bucket. Defaults to DRAFTCODE_S3_BUCKET.",
+    ),
+    prefix: str | None = typer.Option(
+        None,
+        "--prefix",
+        "-p",
+        help="Destination S3 prefix. Defaults to DRAFTCODE_DATA_S3_PREFIX or processed.",
+    ),
+) -> None:
+    """Upload engine-ready processed CSVs to S3 for Lambda simulation runs."""
+    resolved_bucket = bucket or os.getenv("DRAFTCODE_S3_BUCKET")
+    if not resolved_bucket:
+        console.print(
+            "[red]error:[/red] S3 bucket is required. "
+            "Pass --bucket or set DRAFTCODE_S3_BUCKET."
+        )
+        raise typer.Exit(code=1)
+
+    resolved_prefix = (prefix or os.getenv("DRAFTCODE_DATA_S3_PREFIX") or "processed").strip()
+    resolved_prefix = resolved_prefix.strip("/")
+    if not resolved_prefix:
+        console.print(
+            "[red]error:[/red] S3 prefix is required. "
+            "Pass --prefix or set DRAFTCODE_DATA_S3_PREFIX."
+        )
+        raise typer.Exit(code=1)
+
+    files = [source / filename for filename in UPLOAD_DATA_FILES]
+    missing = [path for path in files if not path.is_file()]
+    if missing:
+        console.print(
+            "[red]error:[/red] missing processed CSVs: "
+            + ", ".join(str(path) for path in missing)
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        import boto3  # type: ignore[import-not-found]
+        from botocore.exceptions import (  # type: ignore[import-not-found]
+            BotoCoreError,
+            ClientError,
+            NoCredentialsError,
+            PartialCredentialsError,
+        )
+    except ImportError as exc:
+        console.print(
+            "[red]error:[/red] boto3 is required for upload-data. "
+            'Install with `make install-full` or `uv pip install -e ".[aws]"`.'
+        )
+        raise typer.Exit(code=1) from exc
+
+    try:
+        s3 = boto3.client("s3")
+        for path in files:
+            key = f"{resolved_prefix}/{path.name}"
+            s3.upload_file(
+                str(path),
+                resolved_bucket,
+                key,
+                ExtraArgs={"ContentType": "text/csv; charset=utf-8"},
+            )
+            console.print(f"[green]uploaded:[/green] s3://{resolved_bucket}/{key}")
+    except (NoCredentialsError, PartialCredentialsError) as exc:
+        console.print(
+            "[red]error:[/red] AWS credentials were not found. "
+            "Run `aws configure sso`, set AWS_PROFILE, or export AWS access keys."
+        )
+        raise typer.Exit(code=1) from exc
+    except (BotoCoreError, ClientError) as exc:
+        console.print(f"[red]error:[/red] failed to upload data to S3: {exc}")
+        raise typer.Exit(code=1) from exc
+    except Exception as exc:
+        if "credential" in str(exc).lower():
+            console.print(
+                "[red]error:[/red] AWS credentials were not found or are invalid. "
+                "Run `aws configure sso`, set AWS_PROFILE, or export AWS access keys."
+            )
+        else:
+            console.print(f"[red]error:[/red] failed to upload data to S3: {exc}")
+        raise typer.Exit(code=1) from exc
 
 
 @app.command("validate-output")
@@ -339,6 +592,44 @@ def render_report(
     console.print(f"[green]Wrote report:[/green] {output}")
 
 
+def _load_market_mocks(mock_files: list[str], mock_dir: Path | None) -> list[tuple[str, str]]:
+    mocks: list[tuple[str, str]] = []
+    for spec in mock_files:
+        if "=" not in spec:
+            console.print("[red]error:[/red] --mock-file must use source=path")
+            raise typer.Exit(code=1)
+        source, raw_path = spec.split("=", 1)
+        source = source.strip()
+        raw_path = raw_path.strip()
+        if not source or not raw_path:
+            console.print("[red]error:[/red] --mock-file must use source=path")
+            raise typer.Exit(code=1)
+        path = Path(raw_path)
+        if not path.is_file():
+            raise typer.BadParameter(f"Mock file does not exist: {path}")
+        mocks.append((source, path.read_text(encoding="utf-8")))
+
+    if mock_dir is not None:
+        if not mock_dir.is_dir():
+            raise typer.BadParameter(f"Mock directory does not exist: {mock_dir}")
+        for path in sorted(item for item in mock_dir.iterdir() if item.is_file()):
+            mocks.append((path.stem, path.read_text(encoding="utf-8")))
+    return mocks
+
+
+def _read_market_prospect_names(data_dir: Path) -> list[str]:
+    path = data_dir / "prospects.csv"
+    if not path.is_file():
+        raise typer.BadParameter(f"Prospects file does not exist: {path}")
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    names = [row.get("name", "").strip() for row in rows if row.get("name", "").strip()]
+    if not names:
+        console.print(f"[red]error:[/red] no prospect names found in {path}")
+        raise typer.Exit(code=1)
+    return names
+
+
 def _print_ingest_report(report: dict[str, object]) -> None:
     summary = Table(title="DraftCode official ingest")
     summary.add_column("Item")
@@ -450,6 +741,106 @@ def _print_ingest_report(report: dict[str, object]) -> None:
 
 def _format_optional_float(value: float | None) -> str:
     return "" if value is None else f"{value:.2f}"
+
+
+def _print_intel_result(report: IntelReport, result: dict[str, object]) -> None:
+    mode = "dry-run" if result["dry_run"] else "apply"
+    console.print(f"[bold]Intel mode:[/bold] {mode}")
+    console.print(
+        "[bold]Affects draft order:[/bold] "
+        + ("yes" if report.affects_draft_order else "no")
+    )
+
+    draft_changes = result["draft_order_changes"]
+    assert isinstance(draft_changes, list)
+    pick_table = Table(title="Draft-order pick moves")
+    pick_table.add_column("Pick", justify="right")
+    pick_table.add_column("From")
+    pick_table.add_column("To")
+    pick_table.add_column("Original")
+    pick_table.add_column("Status")
+    if draft_changes:
+        for change in draft_changes:
+            assert isinstance(change, dict)
+            pick_table.add_row(
+                str(change.get("pick", "")),
+                str(change.get("from", change.get("current_abbreviation", ""))),
+                str(change.get("to", change.get("new_abbreviation", ""))),
+                str(change.get("original_team", "")),
+                str(change.get("status", "")),
+            )
+    else:
+        pick_table.add_row("", "No pick moves extracted", "", "", "")
+    console.print(pick_table)
+
+    needs_changes = result["needs_changes"]
+    assert isinstance(needs_changes, list)
+    needs_table = Table(title="Team-need changes")
+    needs_table.add_column("Team")
+    needs_table.add_column("Pos")
+    needs_table.add_column("Before", justify="right")
+    needs_table.add_column("After", justify="right")
+    needs_table.add_column("Timeline")
+    needs_table.add_column("Focus")
+    needs_table.add_column("Status")
+    if needs_changes:
+        for change in needs_changes:
+            assert isinstance(change, dict)
+            before = change.get("before_weight")
+            after = change.get("after_weight")
+            needs_table.add_row(
+                str(change.get("team", "")),
+                str(change.get("position", "")),
+                "" if before is None else f"{float(before):.2f}",
+                "" if after is None else f"{float(after):.2f}",
+                str(change.get("timeline", "")),
+                str(change.get("focus", "")),
+                str(change.get("status", "")),
+            )
+    else:
+        needs_table.add_row("No needs delta extracted", "", "", "", "", "", "")
+    console.print(needs_table)
+    console.print(f"[green]Wrote intel audit:[/green] {result['audit_path']}")
+
+
+def _print_market_result(report: MarketReport, result: dict[str, object]) -> None:
+    mode = "dry-run" if result["dry_run"] else "apply"
+    console.print(f"[bold]Market mode:[/bold] {mode}")
+
+    consensus_table = Table(title="Consensus market")
+    consensus_table.add_column("Prospect")
+    consensus_table.add_column("Consensus pick", justify="right")
+    consensus_table.add_column("Sources", justify="right")
+    consensus_table.add_column("Source names")
+    if report.rankings:
+        for ranking in report.rankings:
+            consensus_table.add_row(
+                ranking.prospect_name,
+                _format_optional_float(ranking.consensus_pick),
+                str(ranking.n_sources),
+                ", ".join(ranking.sources),
+            )
+    else:
+        consensus_table.add_row("No market rankings extracted", "", "", "")
+    console.print(consensus_table)
+
+    before = result["market_rank_coverage_before"]
+    after = result["market_rank_coverage_after"]
+    console.print(f"[bold]Market coverage:[/bold] {before} -> {after}")
+    console.print(f"[bold]Mock signal rows:[/bold] {result['mock_signal_rows']}")
+    if result["wrote_csv"]:
+        console.print("[green]Updated prospects.csv and mock_signals.csv.[/green]")
+    elif report.rankings:
+        console.print("[yellow]Dry-run only; pass --apply to write CSV changes.[/yellow]")
+    else:
+        console.print("[yellow]No consensus rankings; CSV files left untouched.[/yellow]")
+    console.print(f"[green]Wrote market audit:[/green] {result['audit_path']}")
+
+
+def _load_default_dossiers() -> dict[str, TeamDossier] | None:
+    if not DEFAULT_DOSSIER_PATH.is_file():
+        return None
+    return load_team_dossiers(DEFAULT_DOSSIER_PATH)
 
 
 def main() -> None:

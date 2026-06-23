@@ -35,7 +35,7 @@ class Prospect:
     model_pick_low: int | None = None
     board_source: str = ""
     talent_rank: int | None = None
-    market_rank: int | None = None
+    market_rank: float | None = None
     talent_signal: float | None = None
     market_signal: float | None = None
     divergence_gap: int | None = None
@@ -49,6 +49,8 @@ class Team:
     pick: int
     team: str
     abbreviation: str
+    original_team: str = ""
+    via_trade: bool = False
 
 
 @dataclass(frozen=True)

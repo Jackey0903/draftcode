@@ -5,9 +5,11 @@ import random
 import statistics
 from collections import Counter, defaultdict
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
+from draftcode.dossier import TeamDossier
 from draftcode.model import DraftPredictor
+from draftcode.preference import preference_score
 from draftcode.schemas import MockSignal, ModelWeights, Prospect, Team, TeamNeed
 
 
@@ -98,6 +100,18 @@ class MilestoneAnswer:
     p90: float | None
     confidence: float | None
     detail: str
+
+
+@dataclass(frozen=True)
+class ShardResult:
+    """Raw Monte Carlo counts from one independently seeded scenario shard."""
+
+    shard_index: int
+    draws: int
+    pick_counts: list[dict[str, int]]
+    prospect_counts: dict[str, int]
+    prospect_team_counts: dict[str, dict[str, int]]
+    milestone_values: dict[str, list[_MilestoneValue]]
 
 
 @dataclass(frozen=True)
@@ -219,6 +233,8 @@ class MonteCarloDraftTwin:
         mock_signals: list[MockSignal],
         config: SimulationConfig,
         weights: ModelWeights | None = None,
+        dossiers: dict[str, TeamDossier] | None = None,
+        gm_preferences: dict[str, dict[str, float]] | None = None,
     ) -> None:
         self.prospects = prospects
         self.draft_order = sorted(draft_order, key=lambda row: row.pick)
@@ -226,6 +242,9 @@ class MonteCarloDraftTwin:
         self.mock_signals = mock_signals
         self.config = config
         self.weights = weights or ModelWeights()
+        self.dossiers = dossiers
+        self.gm_preferences = gm_preferences or {}
+        self.preference_trace: list[dict[str, object]] = []
         self._prospect_index = {prospect.prospect_id: prospect for prospect in prospects}
         self._prospect_rank = {
             prospect.prospect_id: prospect.consensus_rank for prospect in prospects
@@ -239,16 +258,12 @@ class MonteCarloDraftTwin:
 
     def run(self) -> TwinReport:
         """Execute configured scenarios and return an aggregated twin report."""
-        if self.config.draws <= 0:
-            raise ValueError("SimulationConfig.draws must be positive")
-        if not self.prospects:
-            raise ValueError("At least one prospect is required")
-        if not self.draft_order:
-            raise ValueError("Draft order is required")
-        if len(self.prospects) < len(self.draft_order):
-            raise ValueError("At least one available prospect is required for every pick")
+        return self.aggregate_shards([self.simulate_shard(0, self.config.draws)])
 
-        rng = random.Random(self.config.seed)
+    def simulate_shard(self, shard_index: int, draws: int) -> ShardResult:
+        """Execute one deterministic shard and return mergeable raw counts."""
+        self._validate_inputs(draws)
+        rng = random.Random(self.config.seed + shard_index * 1_000_003)
         pick_counters: list[Counter[str]] = [Counter() for _ in self.draft_order]
         prospect_counter: Counter[str] = Counter()
         prospect_team_counters: dict[str, Counter[str]] = defaultdict(Counter)
@@ -256,8 +271,15 @@ class MonteCarloDraftTwin:
             milestone.id: [] for milestone in self._milestones
         }
 
-        for _ in range(self.config.draws):
-            selected_ids = self._simulate_one(rng)
+        capture_trace = bool(self.dossiers) and shard_index == 0
+        if capture_trace:
+            self.preference_trace = []
+
+        for draw_index in range(draws):
+            selected_ids = self._simulate_one(
+                rng,
+                capture_trace=capture_trace and draw_index == 0,
+            )
             for index, prospect_id in enumerate(selected_ids):
                 team = self.draft_order[index]
                 pick_counters[index][prospect_id] += 1
@@ -266,17 +288,80 @@ class MonteCarloDraftTwin:
             for milestone in self._milestones:
                 milestone_values[milestone.id].append(milestone.calculator(selected_ids))
 
-        picks = self._build_pick_distributions(pick_counters)
+        return ShardResult(
+            shard_index=shard_index,
+            draws=draws,
+            pick_counts=[_sorted_count_dict(counter) for counter in pick_counters],
+            prospect_counts=_sorted_count_dict(prospect_counter),
+            prospect_team_counts={
+                prospect_id: _sorted_count_dict(counter)
+                for prospect_id, counter in sorted(prospect_team_counters.items())
+            },
+            milestone_values=milestone_values,
+        )
+
+    def aggregate_shards(self, shard_results: list[ShardResult]) -> TwinReport:
+        """Merge shard raw counts and build the same report shape as ``run``."""
+        if not shard_results:
+            raise ValueError("At least one shard result is required")
+        total_draws = sum(shard.draws for shard in shard_results)
+        self._validate_inputs(total_draws)
+
+        pick_counters: list[Counter[str]] = [Counter() for _ in self.draft_order]
+        prospect_counter: Counter[str] = Counter()
+        prospect_team_counters: dict[str, Counter[str]] = defaultdict(Counter)
+        milestone_values: dict[str, list[_MilestoneValue]] = {
+            milestone.id: [] for milestone in self._milestones
+        }
+
+        for shard in sorted(shard_results, key=lambda result: result.shard_index):
+            if len(shard.pick_counts) != len(self.draft_order):
+                raise ValueError(
+                    "Shard pick_counts length must match the draft order length"
+                )
+            for index, counts in enumerate(shard.pick_counts):
+                pick_counters[index].update(counts)
+            prospect_counter.update(shard.prospect_counts)
+            for prospect_id, team_counts in shard.prospect_team_counts.items():
+                prospect_team_counters[prospect_id].update(team_counts)
+            for milestone in self._milestones:
+                milestone_values[milestone.id].extend(
+                    shard.milestone_values.get(milestone.id, [])
+                )
+
+        picks = self._build_pick_distributions(pick_counters, total_draws)
         return TwinReport(
-            config=self.config,
+            config=replace(self.config, draws=total_draws),
             picks=picks,
-            assigned_picks=self._build_assigned_picks(pick_counters),
-            board=self._build_board(prospect_counter, prospect_team_counters),
+            assigned_picks=self._build_assigned_picks(
+                pick_counters,
+                prospect_counter,
+                total_draws,
+            ),
+            board=self._build_board(
+                prospect_counter,
+                prospect_team_counters,
+                total_draws,
+            ),
             milestones=self._build_milestones(milestone_values),
             low_confidence_picks=[pick.pick for pick in picks if pick.low_confidence],
         )
 
-    def _simulate_one(self, rng: random.Random) -> list[str]:
+    def _validate_inputs(self, draws: int) -> None:
+        if draws <= 0:
+            raise ValueError("SimulationConfig.draws must be positive")
+        if not self.prospects:
+            raise ValueError("At least one prospect is required")
+        if not self.draft_order:
+            raise ValueError("Draft order is required")
+        if len(self.prospects) < len(self.draft_order):
+            raise ValueError("At least one available prospect is required for every pick")
+
+    def _simulate_one(
+        self,
+        rng: random.Random,
+        capture_trace: bool = False,
+    ) -> list[str]:
         weights = self._sample_weights(rng)
         need_index = self._sample_need_index(rng)
         mock_index = self._sample_mock_index(rng)
@@ -284,6 +369,7 @@ class MonteCarloDraftTwin:
         max_rank = max(prospect.consensus_rank for prospect in self.prospects)
         available = {prospect.prospect_id: prospect for prospect in self.prospects}
         selected: list[str] = []
+        trace_picks: list[dict[str, object]] = []
 
         for team in self.draft_order:
             scored = [
@@ -300,10 +386,28 @@ class MonteCarloDraftTwin:
                 for prospect in available.values()
             ]
             scored.sort(key=lambda row: (row["score"], -row["consensus_rank"]), reverse=True)
+            if capture_trace:
+                trace_picks.append(
+                    {
+                        "pick": team.pick,
+                        "team": team.abbreviation,
+                        "top_candidates": [
+                            {
+                                "prospect_id": row["prospect_id"],
+                                "prospect": row["name"],
+                                "score": round(float(row["score"]), 4),
+                                "preference": row.get("preference_breakdown", {}),
+                            }
+                            for row in scored[:5]
+                        ],
+                    }
+                )
             winner_id = self._choose_candidate(scored[: max(1, self.config.top_k)], rng)
             selected.append(winner_id)
             available.pop(winner_id)
 
+        if capture_trace:
+            self.preference_trace = trace_picks
         return selected
 
     def _sample_weights(self, rng: random.Random) -> ModelWeights:
@@ -364,18 +468,46 @@ class MonteCarloDraftTwin:
         board_eff = _clamp(
             float(components["board_score"]) + rng.gauss(0.0, self.config.board_jitter)
         )
-        score = (
-            weights.board * (0.78 * board_eff + 0.22 * float(components["production_score"]))
-            + weights.pick_slot * float(components["slot_score"])
-            + weights.team_need * float(components["need_score"])
-            + weights.mock_signal * float(components["mock_score"])
-        )
+        dossier = None if self.dossiers is None else self.dossiers.get(team.abbreviation)
+        llm_delta = self._gm_delta(team.abbreviation, str(components["prospect_id"]))
+        if dossier is None:
+            score = (
+                weights.board * (0.78 * board_eff + 0.22 * float(components["production_score"]))
+                + weights.pick_slot * float(components["slot_score"])
+                + weights.team_need * float(components["need_score"])
+                + weights.mock_signal * float(components["mock_score"])
+            )
+            return {
+                "prospect_id": components["prospect_id"],
+                "name": components["name"],
+                "consensus_rank": components["consensus_rank"],
+                "score": _clamp(score + llm_delta),
+            }
+
+        preference_components = dict(components)
+        preference_components["board_score"] = board_eff
+        preference_components["pick_number"] = team.pick
+        score, breakdown = preference_score(dossier, prospect, preference_components)
+        score = _clamp(score + llm_delta)
+        breakdown["llm_delta"] = llm_delta
+        rounded_breakdown = {
+            key: round(value, 4) if isinstance(value, float) else value
+            for key, value in breakdown.items()
+        }
         return {
             "prospect_id": components["prospect_id"],
             "name": components["name"],
             "consensus_rank": components["consensus_rank"],
             "score": score,
+            "preference_breakdown": rounded_breakdown,
         }
+
+    def _gm_delta(self, abbreviation: str, prospect_id: str) -> float:
+        try:
+            value = float(self.gm_preferences.get(abbreviation, {}).get(prospect_id, 0.0))
+            return _clamp(value, -0.2, 0.2)
+        except (TypeError, ValueError):
+            return 0.0
 
     def _choose_candidate(
         self,
@@ -405,6 +537,7 @@ class MonteCarloDraftTwin:
     def _build_pick_distributions(
         self,
         pick_counters: list[Counter[str]],
+        draws: int,
     ) -> list[PickDistribution]:
         distributions: list[PickDistribution] = []
         for team, counter in zip(self.draft_order, pick_counters, strict=True):
@@ -414,7 +547,7 @@ class MonteCarloDraftTwin:
             )
             most_likely_id, most_likely_count = ranked[0]
             most_likely = self._prospect_index[most_likely_id]
-            probability = most_likely_count / self.config.draws
+            probability = most_likely_count / draws
             distributions.append(
                 PickDistribution(
                     pick=team.pick,
@@ -427,7 +560,7 @@ class MonteCarloDraftTwin:
                         CandidateProb(
                             prospect_id=prospect_id,
                             name=self._prospect_index[prospect_id].name,
-                            probability=count / self.config.draws,
+                            probability=count / draws,
                         )
                         for prospect_id, count in ranked[:5]
                     ],
@@ -439,14 +572,10 @@ class MonteCarloDraftTwin:
     def _build_assigned_picks(
         self,
         pick_counters: list[Counter[str]],
+        prospect_counter: Counter[str],
+        draws: int,
     ) -> list[AssignedPick]:
-        prospect_ids = sorted(
-            self._prospect_index,
-            key=lambda prospect_id: (
-                self._prospect_rank[prospect_id],
-                prospect_id,
-            ),
-        )
+        prospect_ids = self._assignment_candidate_ids(pick_counters, prospect_counter)
         weight_matrix = [
             [counter.get(prospect_id, 0) for prospect_id in prospect_ids]
             for counter in pick_counters
@@ -469,15 +598,36 @@ class MonteCarloDraftTwin:
                     abbreviation=team.abbreviation,
                     prospect_id=prospect_id,
                     prospect_name=prospect.name,
-                    marginal_probability=counter.get(prospect_id, 0) / self.config.draws,
+                    marginal_probability=counter.get(prospect_id, 0) / draws,
                 )
             )
         return assigned
+
+    def _assignment_candidate_ids(
+        self,
+        pick_counters: list[Counter[str]],
+        prospect_counter: Counter[str],
+    ) -> list[str]:
+        """Return the first-round probability pool used for unique pick assignment."""
+        marginal_counter: Counter[str] = Counter()
+        for counter in pick_counters:
+            marginal_counter.update(counter)
+
+        return sorted(
+            self._prospect_index,
+            key=lambda prospect_id: (
+                -prospect_counter[prospect_id],
+                -marginal_counter[prospect_id],
+                self._prospect_rank[prospect_id],
+                prospect_id,
+            ),
+        )[: len(self.draft_order)]
 
     def _build_board(
         self,
         prospect_counter: Counter[str],
         prospect_team_counters: dict[str, Counter[str]],
+        draws: int,
     ) -> list[ProspectOutlook]:
         board: list[ProspectOutlook] = []
         for prospect in self.prospects:
@@ -494,11 +644,11 @@ class MonteCarloDraftTwin:
                     prospect_id=prospect.prospect_id,
                     name=prospect.name,
                     first_round_probability=prospect_counter[prospect.prospect_id]
-                    / self.config.draws,
+                    / draws,
                     team_probabilities=[
                         TeamProb(
                             abbreviation=team_abbr,
-                            probability=count / self.config.draws,
+                            probability=count / draws,
                         )
                         for team_abbr, count in team_ranked[:5]
                     ],
@@ -694,6 +844,51 @@ class MonteCarloDraftTwin:
         return float(
             sum(1 for prospect_id in selected_ids if prospect_id in self._top_hand_length_ids)
         )
+
+
+def simulate_shard(
+    shard_index: int,
+    draws: int,
+    prospects: list[Prospect],
+    draft_order: list[Team],
+    team_needs: list[TeamNeed],
+    mock_signals: list[MockSignal],
+    config: SimulationConfig,
+    weights: ModelWeights | None = None,
+    dossiers: dict[str, TeamDossier] | None = None,
+    gm_preferences: dict[str, dict[str, float]] | None = None,
+) -> ShardResult:
+    """Run one deterministic shard without requiring callers to manage the class."""
+    return MonteCarloDraftTwin(
+        prospects=prospects,
+        draft_order=draft_order,
+        team_needs=team_needs,
+        mock_signals=mock_signals,
+        config=config,
+        weights=weights,
+        dossiers=dossiers,
+        gm_preferences=gm_preferences,
+    ).simulate_shard(shard_index, draws)
+
+
+def aggregate_shards(
+    shard_results: list[ShardResult],
+    prospects: list[Prospect],
+    draft_order: list[Team],
+    config: SimulationConfig,
+) -> TwinReport:
+    """Aggregate raw shard outputs into a full Milestone-Aware Draft Twin report."""
+    return MonteCarloDraftTwin(
+        prospects=prospects,
+        draft_order=draft_order,
+        team_needs=[],
+        mock_signals=[],
+        config=config,
+    ).aggregate_shards(shard_results)
+
+
+def _sorted_count_dict(counter: Counter[str]) -> dict[str, int]:
+    return {key: counter[key] for key in sorted(counter)}
 
 
 def _round_half_up(value: float) -> int:

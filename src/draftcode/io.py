@@ -71,7 +71,7 @@ def load_prospects(data_dir: Path) -> list[Prospect]:
             model_pick_low=_optional_int(row.get("model_pick_low")),
             board_source=row.get("board_source", ""),
             talent_rank=_optional_int(row.get("talent_rank")),
-            market_rank=_optional_int(row.get("market_rank")),
+            market_rank=_optional_float(row.get("market_rank")),
             talent_signal=_optional_float(row.get("talent_signal")),
             market_signal=_optional_float(row.get("market_signal")),
             divergence_gap=_optional_int(row.get("divergence_gap")),
@@ -85,7 +85,13 @@ def load_prospects(data_dir: Path) -> list[Prospect]:
 
 def load_draft_order(data_dir: Path) -> list[Team]:
     return [
-        Team(pick=int(row["pick"]), team=row["team"], abbreviation=row["abbreviation"])
+        Team(
+            pick=int(row["pick"]),
+            team=row["team"],
+            abbreviation=row["abbreviation"],
+            original_team=row.get("original_team", ""),
+            via_trade=_optional_bool(row.get("via_trade")),
+        )
         for row in _read_rows(data_dir / "draft_order.csv")
     ]
 

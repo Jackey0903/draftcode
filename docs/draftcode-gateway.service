@@ -1,0 +1,18 @@
+[Unit]
+Description=DraftCode Codex Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=user
+WorkingDirectory=/home/user/draftcode
+Environment=PATH=/home/user/draftcode/.venv/bin:/home/user/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=DRAFTCODE_GATEWAY_KEY=<long-random-shared-secret>
+Environment=DRAFTCODE_GATEWAY_QUIET=1
+ExecStart=/home/user/draftcode/.venv/bin/draftcode gateway --host 127.0.0.1 --port 8787
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

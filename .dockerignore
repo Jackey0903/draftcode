@@ -1,0 +1,23 @@
+# Keep the Lambda container build context small and reproducible.
+.venv/
+.git/
+.aws-sam/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+**/__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# Not needed inside the Lambda image (Dockerfile only COPYs src/, data/sample/, pyproject, README).
+data/raw/
+data/processed/
+data/reference/
+outputs/
+notebooks/
+tests/
+docs/
+scripts/
+*.md
+!README.md

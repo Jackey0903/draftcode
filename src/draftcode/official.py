@@ -9,9 +9,12 @@ from typing import Any
 
 from openpyxl import load_workbook
 
+from draftcode.dossier import TeamDossier, load_team_dossiers
+
 ZERO_WIDTH_NON_JOINER = "\u200c"
 FEET_INCHES_RE = re.compile(r"(\d+)'\s*([\d.]+)''?")
 MISSING_TEXT = {"", "-", "-%", "none", "nan", "n/a", "#n/a"}
+DEFAULT_DOSSIER_PATH = Path("data/dossiers/team_dossiers.json")
 
 PROSPECT_COLUMNS = [
     "prospect_id",
@@ -277,7 +280,11 @@ def parse_number(value: Any) -> float | None:
         return None
 
 
-def ingest_official(source_dir: Path, out_dir: Path) -> dict[str, Any]:
+def ingest_official(
+    source_dir: Path,
+    out_dir: Path,
+    dossier_path: Path | None = None,
+) -> dict[str, Any]:
     source_dir = Path(source_dir)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -313,14 +320,20 @@ def ingest_official(source_dir: Path, out_dir: Path) -> dict[str, Any]:
 
     prospect_rows = [build.row for build in sorted(builds, key=lambda item: item.pool.pool_index)]
     draft_order_rows = _read_draft_order(answer_card_path)
+    dossiers = _load_dossiers_if_available(dossier_path)
+    team_need_rows: list[dict[str, Any]] = []
+    mock_signal_rows: list[dict[str, Any]] = []
+    if dossiers:
+        team_need_rows = _build_team_need_rows(draft_order_rows, dossiers)
+        mock_signal_rows = _build_mock_signal_rows(draft_order_rows, prospect_rows)
     q6_options = _read_q6_options(answer_card_path)
     milestone_questions = _read_milestone_questions(answer_card_path)
     divergence_records = _divergence_records(builds)
 
     _write_csv(out_dir / "prospects.csv", PROSPECT_COLUMNS, prospect_rows)
     _write_csv(out_dir / "draft_order.csv", DRAFT_ORDER_COLUMNS, draft_order_rows)
-    _write_csv(out_dir / "team_needs.csv", TEAM_NEEDS_COLUMNS, [])
-    _write_csv(out_dir / "mock_signals.csv", MOCK_SIGNALS_COLUMNS, [])
+    _write_csv(out_dir / "team_needs.csv", TEAM_NEEDS_COLUMNS, team_need_rows)
+    _write_csv(out_dir / "mock_signals.csv", MOCK_SIGNALS_COLUMNS, mock_signal_rows)
     _write_json(out_dir / "q6_options.json", q6_options)
     _write_json(out_dir / "divergence.json", divergence_records)
 
@@ -337,6 +350,9 @@ def ingest_official(source_dir: Path, out_dir: Path) -> dict[str, Any]:
         q6_options=q6_options,
         milestone_questions=milestone_questions,
         divergence_records=divergence_records,
+        dossier_count=len(dossiers),
+        team_need_rows=len(team_need_rows),
+        mock_signal_rows=len(mock_signal_rows),
     )
     _write_json(out_dir / "ingest_report.json", report)
     return report
@@ -778,6 +794,99 @@ def _read_draft_order(path: Path) -> list[dict[str, Any]]:
         workbook.close()
 
 
+def _load_dossiers_if_available(
+    dossier_path: Path | None,
+) -> dict[str, TeamDossier]:
+    resolved_path = DEFAULT_DOSSIER_PATH if dossier_path is None else Path(dossier_path)
+    if not resolved_path.exists():
+        return {}
+    return load_team_dossiers(resolved_path)
+
+
+def _build_team_need_rows(
+    draft_order_rows: list[dict[str, Any]],
+    dossiers: dict[str, TeamDossier],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for draft_row in draft_order_rows:
+        abbreviation = str(draft_row["abbreviation"])
+        if abbreviation in seen:
+            continue
+        seen.add(abbreviation)
+        dossier = dossiers.get(abbreviation)
+        if dossier is None:
+            raise ValueError(f"Missing team dossier for draft-order team: {abbreviation}")
+        for position in ("G", "W", "B"):
+            rows.append(
+                {
+                    "abbreviation": abbreviation,
+                    "position": position,
+                    "weight": dossier.roster_needs[position],
+                }
+            )
+    return rows
+
+
+def _build_mock_signal_rows(
+    draft_order_rows: list[dict[str, Any]],
+    prospect_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    team_order: dict[str, int] = {}
+    for index, row in enumerate(draft_order_rows):
+        abbreviation = str(row["abbreviation"])
+        if abbreviation not in team_order:
+            team_order[abbreviation] = index
+    signal_by_key: dict[tuple[str, str], dict[str, Any]] = {}
+    for prospect in prospect_rows:
+        prospect_id = str(prospect["prospect_id"])
+        anchors = _market_anchors(prospect)
+        if not anchors:
+            continue
+        for draft_row in draft_order_rows:
+            pick = int(draft_row["pick"])
+            abbreviation = str(draft_row["abbreviation"])
+            signal_strength = 0.0
+            for _, anchor, base_strength in anchors:
+                distance = abs(pick - anchor)
+                if distance <= 4:
+                    signal_strength = max(signal_strength, base_strength - 0.11 * distance)
+            if signal_strength <= 0:
+                continue
+            key = (abbreviation, prospect_id)
+            current = signal_by_key.get(key)
+            if current is None or float(current["signal_strength"]) < signal_strength:
+                signal_by_key[key] = {
+                    "abbreviation": abbreviation,
+                    "prospect_id": prospect_id,
+                    "signal_strength": _clamp_signal(signal_strength),
+                    "source": "handbook-market",
+                }
+    return sorted(
+        signal_by_key.values(),
+        key=lambda row: (team_order.get(str(row["abbreviation"]), 999), str(row["prospect_id"])),
+    )
+
+
+def _market_anchors(prospect: dict[str, Any]) -> list[tuple[str, int, float]]:
+    anchors: list[tuple[str, int, float]] = []
+    espn_rank = prospect.get("espn_rank")
+    if espn_rank is not None:
+        rank = int(espn_rank)
+        if rank <= 35:
+            anchors.append(("espn_rank", rank, 0.88))
+    model_pick_low = prospect.get("model_pick_low")
+    if model_pick_low is not None:
+        rank = int(model_pick_low)
+        if rank <= 35:
+            anchors.append(("model_pick_low", rank, 0.78))
+    return anchors
+
+
+def _clamp_signal(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
 def _read_q6_options(path: Path) -> list[str]:
     workbook = load_workbook(path, data_only=True, read_only=True)
     try:
@@ -824,6 +933,9 @@ def _build_report(
     q6_options: list[str],
     milestone_questions: list[dict[str, str]],
     divergence_records: list[dict[str, Any]],
+    dossier_count: int,
+    team_need_rows: int,
+    mock_signal_rows: int,
 ) -> dict[str, Any]:
     builds_by_pool_index = {build.pool.pool_index: build for build in builds}
     table_matches = {
@@ -852,6 +964,9 @@ def _build_report(
         "market_coverage": _market_coverage(builds),
         "divergence_stats": _divergence_stats(builds),
         "divergence_top5": divergence_records[:5],
+        "dossier_count": dossier_count,
+        "team_need_rows": team_need_rows,
+        "mock_signal_rows": mock_signal_rows,
         "milestone_raw_preview": _milestone_preview(builds),
         "q6_option_count": len(q6_options),
         "milestone_questions": milestone_questions,

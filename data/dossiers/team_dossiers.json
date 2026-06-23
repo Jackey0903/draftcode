@@ -1,0 +1,394 @@
+{
+  "teams": [
+    {
+      "team": "Atlanta Hawks",
+      "abbreviation": "ATL",
+      "timeline": "play-in",
+      "roster_needs": {"G": 0.54, "W": 0.82, "B": 0.58},
+      "gm_persona": {
+        "philosophy": "balanced",
+        "archetype_pref": ["wing", "defense", "spacing"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.62,
+        "notes": "Initial lean toward long two-way wings around established guard creation. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Boston Celtics",
+      "abbreviation": "BOS",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.48, "W": 0.56, "B": 0.68},
+      "gm_persona": {
+        "philosophy": "BPA",
+        "archetype_pref": ["wing", "spacing", "defense", "big"],
+        "risk_tolerance": "low",
+        "intl_openness": 0.66,
+        "notes": "Contender profile favors scalable shooting, defensive IQ, and frontcourt depth. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Brooklyn Nets",
+      "abbreviation": "BKN",
+      "timeline": "rebuild",
+      "roster_needs": {"G": 0.82, "W": 0.78, "B": 0.55},
+      "gm_persona": {
+        "philosophy": "balanced",
+        "archetype_pref": ["creator", "wing", "upside"],
+        "risk_tolerance": "high",
+        "intl_openness": 0.74,
+        "notes": "Rebuild profile can absorb developmental variance for creation and wing upside. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Charlotte Hornets",
+      "abbreviation": "CHA",
+      "timeline": "play-in",
+      "roster_needs": {"G": 0.72, "W": 0.74, "B": 0.52},
+      "gm_persona": {
+        "philosophy": "balanced",
+        "archetype_pref": ["wing", "defense", "creator"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.58,
+        "notes": "Young-core profile values two-way connective talent and secondary handling. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Chicago Bulls",
+      "abbreviation": "CHI",
+      "timeline": "rebuild",
+      "roster_needs": {"G": 0.70, "W": 0.84, "B": 0.64},
+      "gm_persona": {
+        "philosophy": "NEED",
+        "archetype_pref": ["wing", "upside", "defense"],
+        "risk_tolerance": "high",
+        "intl_openness": 0.64,
+        "notes": "Reset profile prioritizes size, wing creation, and long-term upside. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Cleveland Cavaliers",
+      "abbreviation": "CLE",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.42, "W": 0.76, "B": 0.48},
+      "gm_persona": {
+        "philosophy": "NEED",
+        "archetype_pref": ["wing", "spacing", "defense"],
+        "risk_tolerance": "low",
+        "intl_openness": 0.55,
+        "notes": "Contender profile leans toward playable wings who defend and space immediately. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Dallas Mavericks",
+      "abbreviation": "DAL",
+      "timeline": "play-in",
+      "roster_needs": {"G": 0.62, "W": 0.78, "B": 0.50},
+      "gm_persona": {
+        "philosophy": "balanced",
+        "archetype_pref": ["wing", "spacing", "creator"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.70,
+        "notes": "Star-led roster profile values shooting, secondary creation, and international comfort. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Denver Nuggets",
+      "abbreviation": "DEN",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.62, "W": 0.68, "B": 0.44},
+      "gm_persona": {
+        "philosophy": "BPA",
+        "archetype_pref": ["creator", "spacing", "wing"],
+        "risk_tolerance": "low",
+        "intl_openness": 0.78,
+        "notes": "Contender profile favors high-feel skill, shooting, and international translation. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Detroit Pistons",
+      "abbreviation": "DET",
+      "timeline": "play-in",
+      "roster_needs": {"G": 0.58, "W": 0.80, "B": 0.52},
+      "gm_persona": {
+        "philosophy": "NEED",
+        "archetype_pref": ["wing", "spacing", "defense"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.56,
+        "notes": "Emerging-core profile needs wing shooting and defensive balance around on-ball talent. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Golden State Warriors",
+      "abbreviation": "GSW",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.50, "W": 0.74, "B": 0.62},
+      "gm_persona": {
+        "philosophy": "BPA",
+        "archetype_pref": ["spacing", "wing", "defense", "creator"],
+        "risk_tolerance": "low",
+        "intl_openness": 0.68,
+        "notes": "Win-now profile favors feel, shooting, movement fit, and switchable size. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Houston Rockets",
+      "abbreviation": "HOU",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.58, "W": 0.62, "B": 0.46},
+      "gm_persona": {
+        "philosophy": "BPA",
+        "archetype_pref": ["spacing", "creator", "wing"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.60,
+        "notes": "Deep young roster can lean BPA while valuing shooting and decision-making. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Indiana Pacers",
+      "abbreviation": "IND",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.44, "W": 0.72, "B": 0.58},
+      "gm_persona": {
+        "philosophy": "balanced",
+        "archetype_pref": ["wing", "spacing", "defense"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.58,
+        "notes": "Fast-paced contender profile values wings who run, shoot, and defend. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Los Angeles Clippers",
+      "abbreviation": "LAC",
+      "timeline": "play-in",
+      "roster_needs": {"G": 0.70, "W": 0.78, "B": 0.58},
+      "gm_persona": {
+        "philosophy": "NEED",
+        "archetype_pref": ["creator", "wing", "upside"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.62,
+        "notes": "Aging-core profile needs creation succession and athletic wing depth. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Los Angeles Lakers",
+      "abbreviation": "LAL",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.56, "W": 0.72, "B": 0.60},
+      "gm_persona": {
+        "philosophy": "NEED",
+        "archetype_pref": ["spacing", "defense", "wing", "big"],
+        "risk_tolerance": "low",
+        "intl_openness": 0.60,
+        "notes": "Win-now profile values immediate shooting, size, and defensive reliability. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Memphis Grizzlies",
+      "abbreviation": "MEM",
+      "timeline": "play-in",
+      "roster_needs": {"G": 0.54, "W": 0.82, "B": 0.66},
+      "gm_persona": {
+        "philosophy": "balanced",
+        "archetype_pref": ["wing", "defense", "upside", "big"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.58,
+        "notes": "Re-tool profile values physical defense, frontcourt cover, and upside near the top. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Miami Heat",
+      "abbreviation": "MIA",
+      "timeline": "play-in",
+      "roster_needs": {"G": 0.66, "W": 0.76, "B": 0.54},
+      "gm_persona": {
+        "philosophy": "balanced",
+        "archetype_pref": ["defense", "wing", "creator"],
+        "risk_tolerance": "low",
+        "intl_openness": 0.64,
+        "notes": "Development profile favors toughness, defensive versatility, and high-feel guards. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Milwaukee Bucks",
+      "abbreviation": "MIL",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.74, "W": 0.66, "B": 0.52},
+      "gm_persona": {
+        "philosophy": "NEED",
+        "archetype_pref": ["guard", "spacing", "defense"],
+        "risk_tolerance": "low",
+        "intl_openness": 0.62,
+        "notes": "Contender profile needs guard depth, shooting, and immediate rotation utility. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Minnesota Timberwolves",
+      "abbreviation": "MIN",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.64, "W": 0.60, "B": 0.48},
+      "gm_persona": {
+        "philosophy": "BPA",
+        "archetype_pref": ["guard", "spacing", "defense"],
+        "risk_tolerance": "low",
+        "intl_openness": 0.58,
+        "notes": "Contender profile values guard skill, shooting, and defensive buy-in. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "New Orleans Pelicans",
+      "abbreviation": "NOP",
+      "timeline": "play-in",
+      "roster_needs": {"G": 0.76, "W": 0.64, "B": 0.70},
+      "gm_persona": {
+        "philosophy": "NEED",
+        "archetype_pref": ["guard", "big", "defense", "spacing"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.56,
+        "notes": "Rebalancing profile needs guard organization and dependable frontcourt structure. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "New York Knicks",
+      "abbreviation": "NYK",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.50, "W": 0.62, "B": 0.56},
+      "gm_persona": {
+        "philosophy": "BPA",
+        "archetype_pref": ["defense", "wing", "spacing"],
+        "risk_tolerance": "low",
+        "intl_openness": 0.52,
+        "notes": "Contender profile favors physical, playoff-playable wings and reliable shooting. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Oklahoma City Thunder",
+      "abbreviation": "OKC",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.38, "W": 0.58, "B": 0.64},
+      "gm_persona": {
+        "philosophy": "BPA",
+        "archetype_pref": ["upside", "wing", "creator", "length"],
+        "risk_tolerance": "high",
+        "intl_openness": 0.82,
+        "notes": "Asset-rich contender can chase long-term upside, length, and unusual skill packages. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Orlando Magic",
+      "abbreviation": "ORL",
+      "timeline": "play-in",
+      "roster_needs": {"G": 0.78, "W": 0.52, "B": 0.44},
+      "gm_persona": {
+        "philosophy": "NEED",
+        "archetype_pref": ["guard", "spacing", "creator"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.58,
+        "notes": "Defense-first young roster needs guard creation and shooting gravity. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Philadelphia 76ers",
+      "abbreviation": "PHI",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.48, "W": 0.78, "B": 0.58},
+      "gm_persona": {
+        "philosophy": "NEED",
+        "archetype_pref": ["wing", "spacing", "defense"],
+        "risk_tolerance": "low",
+        "intl_openness": 0.60,
+        "notes": "Star-core profile values plug-and-play wings and frontcourt insurance. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Phoenix Suns",
+      "abbreviation": "PHX",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.70, "W": 0.66, "B": 0.62},
+      "gm_persona": {
+        "philosophy": "NEED",
+        "archetype_pref": ["guard", "spacing", "defense"],
+        "risk_tolerance": "low",
+        "intl_openness": 0.58,
+        "notes": "Expensive win-now roster needs low-cost guard depth, defense, and spacing. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Portland Trail Blazers",
+      "abbreviation": "POR",
+      "timeline": "rebuild",
+      "roster_needs": {"G": 0.58, "W": 0.82, "B": 0.64},
+      "gm_persona": {
+        "philosophy": "BPA",
+        "archetype_pref": ["upside", "wing", "defense", "length"],
+        "risk_tolerance": "high",
+        "intl_openness": 0.64,
+        "notes": "Rebuild profile can swing on length, athletic upside, and two-way wing outcomes. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Sacramento Kings",
+      "abbreviation": "SAC",
+      "timeline": "play-in",
+      "roster_needs": {"G": 0.54, "W": 0.84, "B": 0.58},
+      "gm_persona": {
+        "philosophy": "NEED",
+        "archetype_pref": ["wing", "defense", "spacing"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.54,
+        "notes": "Play-in profile needs bigger defensive wings and shooting around established scoring. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "San Antonio Spurs",
+      "abbreviation": "SAS",
+      "timeline": "contend",
+      "roster_needs": {"G": 0.74, "W": 0.62, "B": 0.38},
+      "gm_persona": {
+        "philosophy": "BPA",
+        "archetype_pref": ["creator", "guard", "wing", "international"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.84,
+        "notes": "Wembanyama-era profile values elite feel, guard creation, and global scouting comfort. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Toronto Raptors",
+      "abbreviation": "TOR",
+      "timeline": "play-in",
+      "roster_needs": {"G": 0.62, "W": 0.58, "B": 0.76},
+      "gm_persona": {
+        "philosophy": "balanced",
+        "archetype_pref": ["big", "wing", "defense", "length"],
+        "risk_tolerance": "med",
+        "intl_openness": 0.72,
+        "notes": "Length-forward profile values defensive size, international comfort, and frontcourt depth. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Utah Jazz",
+      "abbreviation": "UTA",
+      "timeline": "rebuild",
+      "roster_needs": {"G": 0.78, "W": 0.70, "B": 0.66},
+      "gm_persona": {
+        "philosophy": "BPA",
+        "archetype_pref": ["upside", "creator", "international", "big"],
+        "risk_tolerance": "high",
+        "intl_openness": 0.82,
+        "notes": "Rebuild profile can prioritize ceiling, skill size, and international upside. 初版,需赛前核实"
+      }
+    },
+    {
+      "team": "Washington Wizards",
+      "abbreviation": "WAS",
+      "timeline": "rebuild",
+      "roster_needs": {"G": 0.76, "W": 0.88, "B": 0.70},
+      "gm_persona": {
+        "philosophy": "BPA",
+        "archetype_pref": ["upside", "wing", "creator", "length"],
+        "risk_tolerance": "high",
+        "intl_openness": 0.70,
+        "notes": "Full rebuild profile should lean elite talent and ceiling over immediate roster fit. 初版,需赛前核实"
+      }
+    }
+  ]
+}
