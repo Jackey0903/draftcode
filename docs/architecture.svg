@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 900" font-family="'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#03100a"/><stop offset="0.55" stop-color="#020906"/><stop offset="1" stop-color="#040d12"/>
+    </linearGradient>
+    <linearGradient id="gGreen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c2417"/><stop offset="1" stop-color="#06140d"/></linearGradient>
+    <linearGradient id="gAmber" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#241d0c"/><stop offset="1" stop-color="#13100a"/></linearGradient>
+    <linearGradient id="gCyan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a2026"/><stop offset="1" stop-color="#06141a"/></linearGradient>
+    <linearGradient id="gFuse" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0e3a22"/><stop offset="1" stop-color="#07180f"/></linearGradient>
+    <linearGradient id="gAws" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#241803"/><stop offset="1" stop-color="#120c04"/></linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <marker id="ah" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#37ff8b"/></marker>
+    <marker id="ahA" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f1c96b"/></marker>
+  </defs>
+
+  <rect width="1280" height="900" fill="url(#bg)"/>
+  <!-- faint grid -->
+  <g stroke="#37ff8b" stroke-opacity="0.05">
+    <path d="M0 0 H1280 M0 0 V900" stroke="none"/>
+    <g>
+      <line x1="0" y1="150" x2="1280" y2="150"/><line x1="0" y1="300" x2="1280" y2="300"/><line x1="0" y1="450" x2="1280" y2="450"/><line x1="0" y1="600" x2="1280" y2="600"/><line x1="0" y1="750" x2="1280" y2="750"/>
+    </g>
+  </g>
+  <rect x="0" y="0" width="1280" height="4" fill="#37ff8b" opacity="0.8"/>
+
+  <!-- title -->
+  <g transform="translate(64,58)">
+    <rect x="-2" y="-30" width="13" height="13" fill="#37ff8b" transform="skewX(-12)"/>
+    <text x="24" y="-16" fill="#eafff2" font-size="30" font-weight="800" letter-spacing="1">选秀作战室 · 系统架构</text>
+    <text x="26" y="10" fill="#37ff8b" font-size="14" font-family="ui-monospace,monospace" letter-spacing="3">DRAFTCODE · SYSTEM ARCHITECTURE</text>
+    <text x="980" y="-18" fill="#9dc6b1" font-size="12.5" font-family="ui-monospace,monospace" letter-spacing="1">天赋 × 专家 × 资金 三信号融合</text>
+    <text x="980" y="2" fill="#9dc6b1" font-size="12.5" font-family="ui-monospace,monospace" letter-spacing="1">分歧即 alpha · 钱是最快的情报</text>
+  </g>
+
+  <!-- ====== flow ====== -->
+  <!-- step labels (left rail) -->
+  <g font-family="ui-monospace,monospace" font-size="12" fill="#5c8470" font-weight="700">
+    <text x="30" y="132">01</text><text x="30" y="250">02</text><text x="30" y="372">03</text><text x="30" y="468">04</text><text x="30" y="566">05</text><text x="30" y="664">06</text>
+  </g>
+
+  <!-- BAND 1: INGEST -->
+  <text x="64" y="116" fill="#62f2ff" font-size="13" font-family="ui-monospace,monospace" letter-spacing="2">① 数据采集 · INGEST　<tspan fill="#5c8470">(抓取在引擎外 · 防注入)</tspan></text>
+  <g>
+    <g><rect x="64" y="128" width="270" height="56" rx="9" fill="url(#gCyan)" stroke="#62f2ff" stroke-opacity="0.4"/>
+      <text x="80" y="153" fill="#cdeff7" font-size="14" font-weight="700">官方数据 + 体测</text><text x="80" y="172" fill="#9dc6b1" font-size="11.5">107 参选人 · combine · 手册</text></g>
+    <g><rect x="350" y="128" width="270" height="56" rx="9" fill="url(#gCyan)" stroke="#62f2ff" stroke-opacity="0.4"/>
+      <text x="366" y="153" fill="#cdeff7" font-size="14" font-weight="700">专家 Mock</text><text x="366" y="172" fill="#9dc6b1" font-size="11.5">CBS · SI · Ringer …</text></g>
+    <g><rect x="636" y="128" width="270" height="56" rx="9" fill="url(#gCyan)" stroke="#62f2ff" stroke-opacity="0.4"/>
+      <text x="652" y="153" fill="#cdeff7" font-size="14" font-weight="700">博彩赔率</text><text x="652" y="172" fill="#9dc6b1" font-size="11.5">ESPN · OddsShark · 预测市场</text></g>
+    <g><rect x="922" y="128" width="294" height="56" rx="9" fill="url(#gCyan)" stroke="#62f2ff" stroke-opacity="0.4"/>
+      <text x="938" y="153" fill="#cdeff7" font-size="14" font-weight="700">实时新闻 / 交易</text><text x="938" y="172" fill="#9dc6b1" font-size="11.5">最后 48h 情报 · 字母哥交易</text></g>
+  </g>
+
+  <!-- BAND 2: SIGNALS -->
+  <text x="64" y="234" fill="#37ff8b" font-size="13" font-family="ui-monospace,monospace" letter-spacing="2">② 三路信号 · SIGNALS</text>
+  <g>
+    <g><rect x="64" y="246" width="372" height="58" rx="10" fill="url(#gGreen)" stroke="#37ff8b" stroke-opacity="0.55"/>
+      <text x="84" y="272" fill="#eafff2" font-size="15" font-weight="800">🧬 天赋 · TALENT</text><text x="84" y="292" fill="#9dc6b1" font-size="11.5">速率指标 REB%/AST%/BLK% · 身体 Z-score · 年龄修正</text></g>
+    <g><rect x="454" y="246" width="372" height="58" rx="10" fill="url(#gGreen)" stroke="#37ff8b" stroke-opacity="0.55"/>
+      <text x="474" y="272" fill="#eafff2" font-size="15" font-weight="800">📋 专家 · EXPERT</text><text x="474" y="292" fill="#9dc6b1" font-size="11.5">多源 mock 按历史命中率加权共识 · 全榜锚</text></g>
+    <g><rect x="844" y="246" width="372" height="58" rx="10" fill="url(#gAmber)" stroke="#f1c96b" stroke-opacity="0.6"/>
+      <text x="864" y="272" fill="#f8e6b8" font-size="15" font-weight="800">💰 资金 · MONEY</text><text x="864" y="292" fill="#c9b78a" font-size="11.5">美式赔率 → 隐含概率 → de-vig 去水 · 最快情报</text></g>
+  </g>
+
+  <!-- BAND 3: FUSION -->
+  <text x="64" y="356" fill="#37ff8b" font-size="13" font-family="ui-monospace,monospace" letter-spacing="2">③ 融合 · FUSION</text>
+  <g filter="url(#glow)">
+    <rect x="64" y="368" width="1152" height="66" rx="12" fill="url(#gFuse)" stroke="#37ff8b" stroke-opacity="0.85"/>
+  </g>
+  <text x="92" y="398" fill="#eafff2" font-size="17" font-weight="800">三信号融合 ＋ 两轴背离</text>
+  <text x="92" y="420" fill="#9dc6b1" font-size="12.5">一致 → 高置信锁定　·　背离 → <tspan fill="#37ff8b" font-weight="700">gpt-5.5 深推理破平局 (LLM-once)</tspan></text>
+  <g font-family="ui-monospace,monospace" font-size="11.5">
+    <rect x="690" y="380" width="232" height="20" rx="4" fill="#0a1a10" stroke="#f1c96b" stroke-opacity="0.5"/><text x="702" y="394" fill="#f1c96b">轴① 天赋 vs 市场</text>
+    <rect x="690" y="404" width="232" height="20" rx="4" fill="#0a1a10" stroke="#ff4473" stroke-opacity="0.5"/><text x="702" y="418" fill="#ff8aa6">轴② 专家 vs 资金</text>
+    <rect x="938" y="380" width="262" height="44" rx="6" fill="#0a1a10" stroke="#37ff8b" stroke-opacity="0.35"/>
+    <text x="952" y="398" fill="#9dc6b1">gpt-5.5 网关 (非 Bedrock)</text><text x="952" y="416" fill="#5c8470">本地 Codex 反代 / EC2 OpenAI 兼容</text>
+  </g>
+
+  <!-- BAND 4: 30 GM -->
+  <text x="64" y="452" fill="#37ff8b" font-size="13" font-family="ui-monospace,monospace" letter-spacing="2">④ 30 GM 偏好</text>
+  <rect x="64" y="464" width="1152" height="58" rx="10" fill="url(#gGreen)" stroke="#37ff8b" stroke-opacity="0.4"/>
+  <text x="84" y="490" fill="#eafff2" font-size="14.5" font-weight="700">30 位独立人格 GM · 偏好函数</text>
+  <text x="84" y="509" fill="#9dc6b1" font-size="11.5" font-family="ui-monospace,monospace">w · (天赋 + 球队需求 + 决策人格 + 专家 + 资金)　一份模板 → 运行时注入 30 套人格</text>
+  <g fill="#37ff8b" fill-opacity="0.85">
+    <!-- 30 GM chips -->
+    <g transform="translate(700,476)">
+      <rect x="0" y="0" width="14" height="14" rx="2"/><rect x="17" y="0" width="14" height="14" rx="2"/><rect x="34" y="0" width="14" height="14" rx="2"/><rect x="51" y="0" width="14" height="14" rx="2"/><rect x="68" y="0" width="14" height="14" rx="2"/><rect x="85" y="0" width="14" height="14" rx="2"/><rect x="102" y="0" width="14" height="14" rx="2"/><rect x="119" y="0" width="14" height="14" rx="2"/><rect x="136" y="0" width="14" height="14" rx="2"/><rect x="153" y="0" width="14" height="14" rx="2"/>
+      <rect x="0" y="17" width="14" height="14" rx="2"/><rect x="17" y="17" width="14" height="14" rx="2"/><rect x="34" y="17" width="14" height="14" rx="2"/><rect x="51" y="17" width="14" height="14" rx="2"/><rect x="68" y="17" width="14" height="14" rx="2"/><rect x="85" y="17" width="14" height="14" rx="2"/><rect x="102" y="17" width="14" height="14" rx="2"/><rect x="119" y="17" width="14" height="14" rx="2"/><rect x="136" y="17" width="14" height="14" rx="2"/><rect x="153" y="17" width="14" height="14" rx="2"/>
+      <rect x="0" y="34" width="14" height="14" rx="2"/><rect x="17" y="34" width="14" height="14" rx="2"/><rect x="34" y="34" width="14" height="14" rx="2"/><rect x="51" y="34" width="14" height="14" rx="2"/><rect x="68" y="34" width="14" height="14" rx="2"/><rect x="85" y="34" width="14" height="14" rx="2"/><rect x="102" y="34" width="14" height="14" rx="2"/><rect x="119" y="34" width="14" height="14" rx="2"/><rect x="136" y="34" width="14" height="14" rx="2"/><rect x="153" y="34" width="14" height="14" rx="2"/>
+    </g>
+    <text x="868" y="500" font-size="11" font-family="ui-monospace,monospace" fill="#5c8470">× 30 队</text>
+  </g>
+
+  <!-- BAND 5: MONTE CARLO -->
+  <text x="64" y="550" fill="#37ff8b" font-size="13" font-family="ui-monospace,monospace" letter-spacing="2">⑤ 蒙特卡洛 · MONTE CARLO</text>
+  <rect x="64" y="562" width="1152" height="62" rx="10" fill="url(#gGreen)" stroke="#37ff8b" stroke-opacity="0.55"/>
+  <text x="84" y="588" fill="#eafff2" font-size="15" font-weight="800">蒙特卡洛 Draft Twin × 1500</text>
+  <text x="84" y="608" fill="#9dc6b1" font-size="11.5">softmax 温度采样 · 顶部顺位<tspan fill="#f1c96b"> 锚定去水赔率 </tspan>· 匈牙利指派去重 → 边际概率 = 置信度</text>
+  <g font-family="ui-monospace,monospace" font-size="11">
+    <rect x="900" y="574" width="300" height="38" rx="6" fill="#0a1a10" stroke="#ff9900" stroke-opacity="0.45"/>
+    <text x="914" y="590" fill="#ffb84d" font-weight="700">Step Functions · Distributed Map</text>
+    <text x="914" y="605" fill="#9dc6b1">1000+ 采样分片并行 · LLM-once 解耦</text>
+  </g>
+
+  <!-- BAND 6: OUTPUTS -->
+  <text x="64" y="652" fill="#f1c96b" font-size="13" font-family="ui-monospace,monospace" letter-spacing="2">⑥ 输出 · OUTPUT</text>
+  <g>
+    <g><rect x="64" y="664" width="280" height="56" rx="9" fill="url(#gAmber)" stroke="#f1c96b" stroke-opacity="0.5"/>
+      <text x="80" y="689" fill="#f8e6b8" font-size="14" font-weight="700">🎯 30 顺位 + 置信度</text><text x="80" y="708" fill="#c9b78a" font-size="11">匈牙利指派 · 边际概率</text></g>
+    <g><rect x="360" y="664" width="260" height="56" rx="9" fill="url(#gAmber)" stroke="#f1c96b" stroke-opacity="0.5"/>
+      <text x="376" y="689" fill="#f8e6b8" font-size="14" font-weight="700">📐 7 道里程碑</text><text x="376" y="708" fill="#c9b78a" font-size="11">同批模拟 · 与板自洽</text></g>
+    <g><rect x="636" y="664" width="270" height="56" rx="9" fill="url(#gGreen)" stroke="#37ff8b" stroke-opacity="0.5"/>
+      <text x="652" y="689" fill="#eafff2" font-size="14" font-weight="700">📋 答题卡</text><text x="652" y="708" fill="#9dc6b1" font-size="11">answer_card.xlsx</text></g>
+    <g><rect x="922" y="664" width="294" height="56" rx="9" fill="url(#gGreen)" stroke="#37ff8b" stroke-opacity="0.5"/>
+      <text x="938" y="689" fill="#eafff2" font-size="14" font-weight="700">🔍 审计追踪</text><text x="938" y="708" fill="#9dc6b1" font-size="11">audit.json/md · 红队质询</text></g>
+  </g>
+
+  <!-- flow arrows (down) -->
+  <g stroke="#37ff8b" stroke-width="1.6" fill="none" marker-end="url(#ah)" opacity="0.8">
+    <!-- ingest -> signals (4 down to 3, simple verticals) -->
+    <path d="M199 184 V244" stroke="#62f2ff" marker-end="url(#ah)"/>
+    <path d="M485 184 V244" stroke="#62f2ff"/>
+    <path d="M771 184 V244" stroke="#f1c96b" marker-end="url(#ahA)"/>
+    <path d="M1069 184 C1069 210 250 214 250 244" stroke-opacity="0.35" stroke="#62f2ff" marker-end="none"/>
+    <!-- signals -> fusion (converge) -->
+    <path d="M250 304 V366" stroke="#37ff8b"/>
+    <path d="M640 304 V366" stroke="#37ff8b"/>
+    <path d="M1030 304 V366" stroke="#f1c96b" marker-end="url(#ahA)"/>
+    <!-- fusion -> GM -->
+    <path d="M640 434 V462" stroke="#37ff8b"/>
+    <!-- GM -> MC -->
+    <path d="M640 522 V560" stroke="#37ff8b"/>
+    <!-- MC -> outputs -->
+    <path d="M640 624 V662" stroke="#37ff8b"/>
+  </g>
+
+  <!-- ====== AWS substrate ====== -->
+  <rect x="64" y="760" width="1152" height="92" rx="12" fill="url(#gAws)" stroke="#ff9900" stroke-opacity="0.45"/>
+  <text x="84" y="788" fill="#ff9900" font-size="14" font-weight="800" font-family="ui-monospace,monospace" letter-spacing="1">☁ AWS 云原生底座 · SERVERLESS</text>
+  <text x="84" y="806" fill="#c9a96a" font-size="11">零 EC2 业务逻辑 · 容器化重活 · IaC(SAM) · 全链路安全 · Well-Architected</text>
+  <g font-family="ui-monospace,monospace" font-size="11" fill="#ffce8a">
+    <g><rect x="360" y="775" width="118" height="26" rx="5" fill="#1a1205" stroke="#ff9900" stroke-opacity="0.35"/><text x="372" y="792" fill="#ffce8a">S3 · KMS</text></g>
+    <g><rect x="486" y="775" width="150" height="26" rx="5" fill="#1a1205" stroke="#ff9900" stroke-opacity="0.35"/><text x="498" y="792">DynamoDB 台账</text></g>
+    <g><rect x="644" y="775" width="138" height="26" rx="5" fill="#1a1205" stroke="#ff9900" stroke-opacity="0.35"/><text x="656" y="792">Lambda 容器</text></g>
+    <g><rect x="790" y="775" width="180" height="26" rx="5" fill="#1a1205" stroke="#ff9900" stroke-opacity="0.35"/><text x="802" y="792">Step Functions ×2</text></g>
+    <g><rect x="978" y="775" width="160" height="26" rx="5" fill="#1a1205" stroke="#ff9900" stroke-opacity="0.35"/><text x="990" y="792">Secrets · Guardrail</text></g>
+    <g transform="translate(360,815)"><rect x="0" y="0" width="200" height="26" rx="5" fill="#0a1a10" stroke="#37ff8b" stroke-opacity="0.35"/><text x="12" y="17" fill="#9dffc6">EC2 · gpt-5.5 OpenAI 网关</text></g>
+    <g transform="translate(572,815)"><rect x="0" y="0" width="210" height="26" rx="5" fill="#1a1205" stroke="#ff9900" stroke-opacity="0.3"/><text x="12" y="17">Fargate 爬虫 (赔率, 计划)</text></g>
+    <g transform="translate(794,815)"><rect x="0" y="0" width="176" height="26" rx="5" fill="#1a1205" stroke="#ff9900" stroke-opacity="0.3"/><text x="12" y="17">EventBridge · ECR</text></g>
+  </g>
+  <!-- substrate tie -->
+  <path d="M150 720 V752" stroke="#ff9900" stroke-opacity="0.4" stroke-dasharray="4 4" marker-end="none"/>
+  <path d="M1130 624 C1180 700 1150 720 1150 752" stroke="#ff9900" stroke-opacity="0.4" stroke-dasharray="4 4" fill="none"/>
+
+  <!-- footer -->
+  <text x="64" y="884" fill="#5c8470" font-size="11" font-family="ui-monospace,monospace">核心引擎零第三方依赖 · openpyxl 仅在 official/answer 层 · 75 tests · ruff 净 · gpt-5.5 LLM-once</text>
+  <text x="1216" y="884" fill="#5c8470" font-size="11" font-family="ui-monospace,monospace" text-anchor="end">AWS Summit Shanghai 2026 · 模拟球探</text>
+</svg>
