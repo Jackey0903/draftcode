@@ -32,3 +32,6 @@ HANDOFF.md
 *.parquet
 *.pkl
 *.joblib
+
+# 前端定妆照源图(已 base64 内嵌进自包含的 web/draft_room.html;源图本地保留即可)
+web/headshots/
