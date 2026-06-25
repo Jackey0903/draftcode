@@ -16,6 +16,20 @@
 
 <sub>AWS Summit Shanghai 2026 · 「模拟球探」24h 黑客松 · 评分：代码 30% / 路演 30% / 预测 40%</sub>
 
+<br/>
+<div align="center">
+
+### 🏆 黑客松战报
+
+<a href="#">
+  <img src="https://img.shields.io/badge/🏆-季军-brightgreen?style=for-the-badge" alt="第三名">
+</a>
+<a href="#">
+  <img src="https://img.shields.io/badge/🎫-直通澳门赛-gold?style=for-the-badge" alt="直通澳门">
+</a>
+
+</div>
+
 </div>
 
 ---
